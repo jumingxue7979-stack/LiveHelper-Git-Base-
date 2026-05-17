@@ -1,5 +1,7 @@
 # LiveHelper
 
+Start here Korean guide: `START_HERE_KO.md`
+
 LiveHelper Windows OBS Rank is the Windows live-rank tracking and comparison-report app.
 
 ## Current Verified Windows Behavior
