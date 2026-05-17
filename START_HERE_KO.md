@@ -16,6 +16,27 @@ GitHub 기준 저장소는 아래입니다.
 https://github.com/jumingxue7979-stack/LiveHelper-Git-Base-
 ```
 
+
+## 오늘 최종 인수인계
+
+다음 새창에서는 아래 파일만 먼저 열어 붙여넣으면 됩니다.
+
+```text
+NEXT_CHAT_COPY_PASTE_2026-05-17_KO.md
+```
+
+오늘 전체 작업 기록은 아래입니다.
+
+```text
+docs/final-handoff-2026-05-17-ko.md
+```
+
+GitHub/빌드 흐름을 배우는 교육 자료는 아래입니다.
+
+```text
+docs/education-guide-git-and-build-2026-05-17-ko.md
+```
+
 ## 절대 헷갈리지 말 것
 
 - 실제 작업: `LiveHelper-Git-Base`
