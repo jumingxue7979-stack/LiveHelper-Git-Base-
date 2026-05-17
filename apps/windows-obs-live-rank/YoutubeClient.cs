@@ -324,6 +324,8 @@ namespace LiveHelperWindowsObsRank
         private void ApplySearchResult(RankResult result, Dictionary<string, object> payload, bool liveOnly)
         {
             int index = 0;
+            int fallbackRank = -1;
+            Dictionary<string, object> fallbackItem = null;
             foreach (Dictionary<string, object> item in Items(payload))
             {
                 Dictionary<string, object> snippet = Dict(item, "snippet");
@@ -337,19 +339,37 @@ namespace LiveHelperWindowsObsRank
                 bool isTargetChannel = Str(snippet, "channelId") == result.ChannelId;
                 bool isLockedVideo = result.TargetVideoId.Length > 0 && result.TargetVideoId == itemVideoId;
                 bool isSearchLive = liveOnly || Str(snippet, "liveBroadcastContent") == "live";
-                bool isTargetLive = isTargetChannel && (result.TargetVideoId.Length > 0 ? isLockedVideo : isSearchLive);
+                bool exactTarget = isTargetChannel && result.TargetVideoId.Length > 0 && isLockedVideo;
+                bool channelLiveFallback = isTargetChannel && isSearchLive;
 
-                if (isTargetLive)
+                if (exactTarget || (result.TargetVideoId.Length == 0 && channelLiveFallback))
                 {
-                    if (liveOnly) result.LiveRank = index + 1;
-                    else result.NoFilterRank = index + 1;
-                    result.TargetVideoId = itemVideoId;
-                    result.TargetTitle = Str(snippet, "title");
-                    result.ChannelTitle = Str(snippet, "channelTitle");
+                    ApplyMatchedSearchResult(result, item, liveOnly, index + 1);
                     return;
+                }
+
+                if (fallbackRank < 0 && channelLiveFallback)
+                {
+                    fallbackRank = index + 1;
+                    fallbackItem = item;
                 }
                 index += 1;
             }
+
+            if (fallbackItem != null)
+            {
+                ApplyMatchedSearchResult(result, fallbackItem, liveOnly, fallbackRank);
+            }
+        }
+
+        private void ApplyMatchedSearchResult(RankResult result, Dictionary<string, object> item, bool liveOnly, int rank)
+        {
+            Dictionary<string, object> snippet = Dict(item, "snippet");
+            if (liveOnly) result.LiveRank = rank;
+            else result.NoFilterRank = rank;
+            result.TargetVideoId = VideoId(item);
+            result.TargetTitle = Str(snippet, "title");
+            result.ChannelTitle = Str(snippet, "channelTitle");
         }
 
         private void AddOwnLivesFromSearch(ActiveLiveStatus status, Dictionary<string, bool> seen, Dictionary<string, object> payload, bool liveOnly)

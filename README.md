@@ -35,6 +35,21 @@ Build output:
 apps\windows-obs-live-rank\dist\LiveHelperWindowsObsRank.exe
 ```
 
+
+## GitHub Actions Build
+
+After pushing to GitHub, Windows EXE can also be built from GitHub Actions.
+
+```text
+Actions -> Build Windows OBS Live Rank -> Run workflow -> download artifact
+```
+
+Mac/Windows sync guide:
+
+```text
+docs/github-sync-and-windows-build-2026-05-17-ko.md
+```
+
 ## Distribution Rule
 
 Do not ask customers to disable security settings or manually trust a local certificate.

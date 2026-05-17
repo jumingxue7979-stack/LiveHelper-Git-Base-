@@ -1,0 +1,80 @@
+name: Build Windows OBS Live Rank
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - "apps/windows-obs-live-rank/**"
+      - ".github/workflows/windows-obs-live-rank-build.yml"
+
+jobs:
+  build-windows-exe:
+    name: Build Windows EXE
+    runs-on: windows-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Compile LiveHelperWindowsObsRank.exe
+        shell: powershell
+        run: |
+          $ErrorActionPreference = "Stop"
+          $appDir = Join-Path $env:GITHUB_WORKSPACE "apps/windows-obs-live-rank"
+          $outDir = Join-Path $env:GITHUB_WORKSPACE "dist/windows-obs-live-rank"
+          New-Item -ItemType Directory -Force -Path $outDir | Out-Null
+
+          $csc = "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
+          if (!(Test-Path $csc)) {
+            $csc = "$env:WINDIR\Microsoft.NET\Framework\v4.0.30319\csc.exe"
+          }
+          if (!(Test-Path $csc)) {
+            throw "csc.exe not found on this Windows runner."
+          }
+
+          Push-Location $appDir
+          & $csc `
+            /nologo `
+            /target:winexe `
+            /platform:anycpu `
+            /out:"$outDir\LiveHelperWindowsObsRank.exe" `
+            /reference:System.dll `
+            /reference:System.Core.dll `
+            /reference:System.Drawing.dll `
+            /reference:System.Windows.Forms.dll `
+            /reference:System.Web.Extensions.dll `
+            LiveHelperWindowsObsRank.cs `
+            YoutubeClient.cs `
+            ComparisonModels.cs
+          Pop-Location
+
+      - name: Write Korean build note
+        shell: powershell
+        run: |
+          $outDir = Join-Path $env:GITHUB_WORKSPACE "dist/windows-obs-live-rank"
+          @"
+          # LiveHelper Windows OBS Live Rank 빌드 결과
+
+          생성 파일: LiveHelperWindowsObsRank.exe
+          빌드 기준: GitHub Actions windows-latest
+          포함 기능:
+          - 라이브 순위 5분 간격 기록
+          - 노필터 순위 보조 매칭 기록
+          - 내 채널 vs 노필터 라이브 1위 도표형 대시보드/비교 리포트
+
+          테스트 전 확인:
+          - YouTube API 키 입력
+          - 내 채널 주소 입력
+          - 테스트 키워드 입력
+          - 라이브 시작 후 5분~7분 사이 첫 순위 기록 확인
+          "@ | Set-Content -Encoding UTF8 (Join-Path $outDir "BUILD_RESULT_KO.md")
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: LiveHelper_WindowsObsLiveRank_${{ github.run_number }}
+          path: dist/windows-obs-live-rank/
