@@ -1161,30 +1161,33 @@ namespace LiveHelperWindowsObsRank
             ShowInTaskbar = false;
             TopMost = true;
             BackColor = Color.FromArgb(255, 229, 0);
-            Size = new Size(430, 150);
+            Size = new Size(500, 180);
 
             Rectangle area = Screen.PrimaryScreen.WorkingArea;
             Location = new Point(area.Right - Width - 28, area.Top + 48);
 
             Label titleLabel = new Label();
             titleLabel.Text = string.IsNullOrWhiteSpace(title) ? "라이브 순위" : title;
-            titleLabel.Font = new Font("Malgun Gothic", 13, FontStyle.Bold);
+            titleLabel.AutoEllipsis = true;
+            titleLabel.Font = new Font("Malgun Gothic", 11, FontStyle.Bold);
             titleLabel.ForeColor = Color.FromArgb(17, 24, 39);
-            titleLabel.SetBounds(22, 16, 386, 24);
+            titleLabel.SetBounds(22, 14, 456, 24);
             Controls.Add(titleLabel);
 
             Label rankLabel = new Label();
             rankLabel.Text = rank;
-            rankLabel.Font = new Font("Malgun Gothic", 24, FontStyle.Bold);
+            rankLabel.TextAlign = ContentAlignment.MiddleLeft;
+            rankLabel.Font = new Font("Malgun Gothic", 18, FontStyle.Bold);
             rankLabel.ForeColor = Color.FromArgb(17, 24, 39);
-            rankLabel.SetBounds(22, 42, 386, 72);
+            rankLabel.SetBounds(22, 44, 456, 86);
             Controls.Add(rankLabel);
 
             Label subLabel = new Label();
             subLabel.Text = sub;
-            subLabel.Font = new Font("Malgun Gothic", 9, FontStyle.Regular);
+            subLabel.AutoEllipsis = true;
+            subLabel.Font = new Font("Malgun Gothic", 8, FontStyle.Regular);
             subLabel.ForeColor = Color.FromArgb(51, 65, 85);
-            subLabel.SetBounds(24, 116, 382, 22);
+            subLabel.SetBounds(24, 140, 452, 24);
             Controls.Add(subLabel);
         }
 
