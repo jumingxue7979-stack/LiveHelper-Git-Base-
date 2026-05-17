@@ -611,7 +611,7 @@ namespace LiveHelperWindowsObsRank
             ComparisonDashboard dashboard = new ComparisonDashboard(report);
             dashboard.Location = new Point(0, 0);
             dashboard.Width = 1140;
-            dashboard.Height = 900;
+            dashboard.Height = 960;
             scrollPanel.Controls.Add(dashboard);
         }
     }
