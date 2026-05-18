@@ -598,8 +598,11 @@ namespace LiveHelperWindowsObsRank
         {
             Text = "LiveRank 비교 분석";
             StartPosition = FormStartPosition.CenterParent;
-            Size = new Size(1180, 780);
             MinimumSize = new Size(980, 680);
+            Rectangle area = Screen.PrimaryScreen.WorkingArea;
+            int formWidth = Math.Min(1180, Math.Max(MinimumSize.Width, area.Width - 80));
+            int formHeight = Math.Min(920, Math.Max(MinimumSize.Height, area.Height - 80));
+            Size = new Size(formWidth, formHeight);
             BackColor = Color.FromArgb(248, 250, 252);
 
             Panel scrollPanel = new Panel();
@@ -611,7 +614,8 @@ namespace LiveHelperWindowsObsRank
             ComparisonDashboard dashboard = new ComparisonDashboard(report);
             dashboard.Location = new Point(0, 0);
             dashboard.Width = 1140;
-            dashboard.Height = 960;
+            dashboard.Height = 1040;
+            scrollPanel.AutoScrollMinSize = new Size(dashboard.Width, dashboard.Height + 24);
             scrollPanel.Controls.Add(dashboard);
         }
     }
