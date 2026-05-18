@@ -90,11 +90,16 @@ namespace LiveHelperWindowsObsRank
             Dictionary<string, object> ownSearchItem = null;
             Dictionary<string, object> ownAnySearchItem = null;
             Dictionary<string, object> competitorSearchItem = null;
+            int ownNoFilterRank = -1;
+            int ownAnyNoFilterRank = -1;
+            int competitorNoFilterRank = -1;
             int noFilterLiveCount = 0;
             bool ownNoFilterLive = false;
 
+            int noFilterIndex = 0;
             foreach (Dictionary<string, object> item in Items(searchPayload))
             {
+                noFilterIndex += 1;
                 Dictionary<string, object> snippet = Dict(item, "snippet");
                 string itemVideoId = VideoId(item);
                 bool isLive = Str(snippet, "liveBroadcastContent") == "live";
@@ -104,6 +109,7 @@ namespace LiveHelperWindowsObsRank
                     if (ownAnySearchItem == null || itemVideoId == ownVideoId)
                     {
                         ownAnySearchItem = item;
+                        ownAnyNoFilterRank = noFilterIndex;
                         if (ownVideoId.Length == 0) ownVideoId = itemVideoId;
                     }
                     if (isLive)
@@ -112,6 +118,7 @@ namespace LiveHelperWindowsObsRank
                         if (ownSearchItem == null || itemVideoId == ownVideoId)
                         {
                             ownSearchItem = item;
+                            ownNoFilterRank = noFilterIndex;
                             if (ownVideoId.Length == 0) ownVideoId = itemVideoId;
                         }
                     }
@@ -119,6 +126,7 @@ namespace LiveHelperWindowsObsRank
                 if (isLive && Str(snippet, "channelId") != ownChannel.Id && competitorSearchItem == null)
                 {
                     competitorSearchItem = item;
+                    competitorNoFilterRank = noFilterIndex;
                 }
             }
 
@@ -126,6 +134,7 @@ namespace LiveHelperWindowsObsRank
             {
                 ownSearchItem = ownAnySearchItem;
                 ownVideoId = VideoId(ownAnySearchItem);
+                if (ownNoFilterRank < 0) ownNoFilterRank = ownAnyNoFilterRank;
             }
 
             ComparisonReport report = new ComparisonReport();
@@ -136,7 +145,7 @@ namespace LiveHelperWindowsObsRank
                 string summary;
                 if (noFilterLiveCount == 0)
                 {
-                    summary = "노필터 검색 상위권에 실시간 라이브가 없어 1위 채널 비교를 건너뛰었습니다. 라이브 필터 결과는 참고만 합니다.";
+                    summary = "노필터 검색 상위권에 실시간 라이브가 없어 비교 대상 산정을 건너뛰었습니다. 라이브 필터 결과는 참고만 합니다.";
                 }
                 else if (ownNoFilterLive)
                 {
@@ -149,7 +158,8 @@ namespace LiveHelperWindowsObsRank
                 return ComparisonAnalyzer.Empty(
                     report.Keyword,
                     ownChannel.Title,
-                    summary
+                    summary,
+                    ownNoFilterRank
                 );
             }
 
@@ -161,7 +171,7 @@ namespace LiveHelperWindowsObsRank
             ChannelStats ownStats = channels.ContainsKey(ownChannel.Id) ? channels[ownChannel.Id] : new ChannelStats();
             ChannelStats competitorStats = channels.ContainsKey(competitorVideo.ChannelId) ? channels[competitorVideo.ChannelId] : new ChannelStats();
 
-            return ComparisonAnalyzer.Build(report.Keyword, ownChannel.Title, ownVideo, competitorVideo, ownStats, competitorStats);
+            return ComparisonAnalyzer.Build(report.Keyword, ownChannel.Title, ownVideo, competitorVideo, ownStats, competitorStats, ownNoFilterRank, competitorNoFilterRank);
         }
 
         public bool IsVideoLive(string videoId)

@@ -666,7 +666,7 @@ namespace LiveHelperWindowsObsRank
         private void DrawHeader(Graphics g)
         {
             DrawString(g, "유튜브 라이브 경쟁력 진단", titleFont, ink, new RectangleF(32, 22, 520, 40));
-            DrawString(g, "내 채널 vs 노필터 라이브 1위", headerFont, muted, new RectangleF(34, 62, 440, 28));
+            DrawString(g, Blank(data.ComparisonTitle, "내 채널 vs 노필터 라이브 1위"), headerFont, muted, new RectangleF(34, 62, 520, 28));
             DrawBadge(g, new Rectangle(892, 28, 210, 38), "키워드: " + Blank(data.Keyword, "확인 불가"), Color.White, border, ink);
         }
 
@@ -701,16 +701,16 @@ namespace LiveHelperWindowsObsRank
 
             DrawString(g, "격차", sectionFont, ink, new RectangleF(center.X, center.Y + 10, center.Width, 26), Center());
             DrawString(g, (data.Gap > 0 ? "-" + data.Gap : "+" + Math.Abs(data.Gap)) + "점", scoreFont, data.Gap > 0 ? Color.FromArgb(220, 38, 38) : competitorColor, new RectangleF(center.X, center.Y + 34, center.Width, 50), Center());
-            DrawString(g, data.Gap > 0 ? "현재 1위 경쟁력 부족" : "현재 내 채널 우세", bodyFont, muted, new RectangleF(center.X, center.Y + 82, center.Width, 24), Center());
+            DrawString(g, data.Gap > 0 ? "현재 " + data.CompetitorShortLabel + " 대비 부족" : "현재 내 채널 우세", bodyFont, muted, new RectangleF(center.X, center.Y + 82, center.Width, 24), Center());
 
-            DrawString(g, "1위 채널", sectionFont, competitorColor, new RectangleF(right.X, right.Y + 8, right.Width, 24), Center());
+            DrawString(g, data.CompetitorLabel, sectionFont, competitorColor, new RectangleF(right.X, right.Y + 8, right.Width, 24), Center());
             DrawString(g, data.CompetitorScore.ToString(), scoreFont, competitorColor, new RectangleF(right.X, right.Y + 28, right.Width, 48), Center());
             DrawGrade(g, data.CompetitorGrade, new Rectangle(right.X + 210, right.Y + 38, 44, 36), competitorColor);
             DrawString(g, Blank(data.CompetitorChannel, "비교 대상 없음"), bodyBoldFont, ink, new RectangleF(right.X, right.Y + 76, right.Width, 22), Center());
 
             int infoY = card.Bottom - 34;
             DrawString(g, "표시 시점: 방송 후/수동 분석", smallFont, muted, new RectangleF(card.X + 35, infoY, 250, 22));
-            DrawString(g, "비교 기준: 노필터 검색 내 실시간 라이브 1위", smallFont, muted, new RectangleF(card.X + 382, infoY, 330, 22), Center());
+            DrawString(g, "비교 기준: " + data.CompetitorLabel, smallFont, muted, new RectangleF(card.X + 382, infoY, 330, 22), Center());
             DrawString(g, DateTime.Now.ToString("yyyy-MM-dd HH:mm"), smallFont, muted, new RectangleF(card.Right - 240, infoY, 210, 22), Far());
         }
 
@@ -731,7 +731,7 @@ namespace LiveHelperWindowsObsRank
                 DrawBar(g, new Rectangle(rowRect.X + 250, rowRect.Y + 3, 230, 9), row.OwnScore, ownColor);
                 DrawString(g, row.OwnScore + "점", bodyBoldFont, ink, new RectangleF(rowRect.X + 492, rowRect.Y - 2, 45, 18), Far());
 
-                DrawString(g, "1위", smallFont, muted, new RectangleF(rowRect.X + 190, rowRect.Y + 24, 60, 16));
+                DrawString(g, data.CompetitorShortLabel, smallFont, muted, new RectangleF(rowRect.X + 190, rowRect.Y + 24, 60, 16));
                 DrawBar(g, new Rectangle(rowRect.X + 250, rowRect.Y + 27, 230, 9), row.CompetitorScore, competitorColor);
                 DrawString(g, row.CompetitorScore + "점", bodyBoldFont, ink, new RectangleF(rowRect.X + 492, rowRect.Y + 22, 45, 18), Far());
                 DrawStatusBadge(g, new Rectangle(rowRect.Right - 104, rowRect.Y + 10, 92, 28), row.Status);
@@ -781,7 +781,7 @@ namespace LiveHelperWindowsObsRank
             }
 
             DrawLegend(g, card.X + 92, card.Bottom - 26, ownColor, "내 채널");
-            DrawLegend(g, card.X + 190, card.Bottom - 26, competitorColor, "1위 채널");
+            DrawLegend(g, card.X + 190, card.Bottom - 26, competitorColor, data.CompetitorShortLabel);
         }
 
         private void DrawCoreDiagnosis(Graphics g)
@@ -794,7 +794,7 @@ namespace LiveHelperWindowsObsRank
             if (string.IsNullOrWhiteSpace(text))
             {
                 text = data.Gap > 0
-                    ? "1위와의 격차가 큰 항목부터 고치면 다음 방송의 진입 가능성을 높일 수 있습니다."
+                    ? data.CompetitorShortLabel + "와의 격차가 큰 항목부터 고치면 다음 방송의 진입 가능성을 높일 수 있습니다."
                     : "현재 강점은 유지하고 낮은 항목만 보강하세요.";
             }
             DrawMultiline(g, text, bodyFont, ink, new RectangleF(card.X + 20, card.Y + 48, card.Width - 40, card.Height - 62));
@@ -1000,6 +1000,9 @@ namespace LiveHelperWindowsObsRank
         public string Keyword = "";
         public string OwnChannel = "";
         public string CompetitorChannel = "";
+        public string ComparisonTitle = "";
+        public string CompetitorLabel = "1위 채널";
+        public string CompetitorShortLabel = "1위";
         public int OwnScore;
         public int CompetitorScore;
         public string OwnGrade = "";
@@ -1028,9 +1031,16 @@ namespace LiveHelperWindowsObsRank
                 }
 
                 if (line.StartsWith("키워드:")) data.Keyword = AfterColon(line);
+                else if (line.StartsWith("내 채널") && line.Contains("노필터 라이브")) data.ComparisonTitle = line;
                 else if (line.StartsWith("내 채널:") && data.OwnChannel.Length == 0) data.OwnChannel = AfterColon(line);
-                else if (line.StartsWith("노필터 라이브 1위:")) data.CompetitorChannel = AfterColon(line);
+                else if (line.StartsWith("비교 대상:"))
+                {
+                    data.CompetitorLabel = AfterColon(line);
+                    data.CompetitorShortLabel = ShortRankLabel(data.CompetitorLabel);
+                }
+                else if (line.StartsWith("노필터 라이브") && line.Contains(":")) data.CompetitorChannel = AfterColon(line);
                 else if (line.StartsWith("- 내 채널:")) ParseScoreLine(line, true, data);
+                else if (line.StartsWith("- 노필터 라이브") && line.Contains("점(")) ParseScoreLine(line, false, data);
                 else if (line.StartsWith("- 1위 채널:")) ParseScoreLine(line, false, data);
                 else if (line == "핵심 진단")
                 {
@@ -1054,14 +1064,20 @@ namespace LiveHelperWindowsObsRank
                 }
                 else
                 {
-                    Match category = Regex.Match(line, @"^\d+\.\s*(.+?):\s*내\s*(\d+)점\s*/\s*1위\s*(\d+)점\s*/\s*(.+)$");
+                    Match category = Regex.Match(line, @"^\d+\.\s*(.+?):\s*내\s*(\d+)점\s*/\s*(.+?)\s*(\d+)점\s*/\s*(.+)$");
                     if (category.Success)
                     {
                         current = new CategoryVisual();
                         current.Name = category.Groups[1].Value.Trim();
                         current.OwnScore = IntValue(category.Groups[2].Value);
-                        current.CompetitorScore = IntValue(category.Groups[3].Value);
-                        current.GapText = category.Groups[4].Value.Trim();
+                        string categoryRankLabel = category.Groups[3].Value.Trim();
+                        if (categoryRankLabel.Length > 0 && categoryRankLabel != "1위")
+                        {
+                            data.CompetitorShortLabel = categoryRankLabel;
+                            data.CompetitorLabel = "노필터 라이브 " + categoryRankLabel;
+                        }
+                        current.CompetitorScore = IntValue(category.Groups[4].Value);
+                        current.GapText = category.Groups[5].Value.Trim();
                         current.Status = StatusFromScores(current.OwnScore, current.CompetitorScore);
                         data.Categories.Add(current);
                         continue;
@@ -1094,7 +1110,17 @@ namespace LiveHelperWindowsObsRank
             }
 
             data.Gap = data.CompetitorScore - data.OwnScore;
+            if (data.ComparisonTitle.Length == 0)
+            {
+                data.ComparisonTitle = "내 채널 vs " + data.CompetitorLabel;
+            }
             return data;
+        }
+
+        private static string ShortRankLabel(string label)
+        {
+            Match match = Regex.Match(label ?? "", @"(\d+)위");
+            return match.Success ? match.Groups[1].Value + "위" : "비교 대상";
         }
 
         private static void ParseScoreLine(string line, bool own, ReportVisualData data)

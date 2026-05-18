@@ -11,6 +11,11 @@ namespace LiveHelperWindowsObsRank
         public string CompetitorChannelTitle = "";
         public string OwnTitle = "";
         public string CompetitorTitle = "";
+        public int OwnNoFilterRank = -1;
+        public int CompetitorNoFilterRank = -1;
+        public string ComparisonTitle = "내 채널 vs 노필터 라이브 1위";
+        public string CompetitorRankLabel = "노필터 라이브 1위";
+        public string CompetitorShortLabel = "1위";
         public int OwnScore;
         public int CompetitorScore;
         public string OwnGrade = "F";
@@ -27,7 +32,9 @@ namespace LiveHelperWindowsObsRank
             builder.AppendLine("LiveRank 비교 분석");
             builder.AppendLine("키워드: " + Keyword);
             builder.AppendLine("내 채널: " + OwnChannelTitle);
-            builder.AppendLine("노필터 라이브 1위: " + (CompetitorChannelTitle.Length == 0 ? "비교 대상 없음" : CompetitorChannelTitle));
+            builder.AppendLine("내 노필터 순위: " + RankValueText(OwnNoFilterRank));
+            builder.AppendLine("비교 대상: " + (CompetitorChannelTitle.Length == 0 ? "비교 대상 없음" : CompetitorRankLabel));
+            builder.AppendLine(CompetitorRankLabel + ": " + (CompetitorChannelTitle.Length == 0 ? "비교 대상 없음" : CompetitorChannelTitle));
             builder.AppendLine();
             builder.AppendLine(Summary);
             builder.AppendLine();
@@ -39,6 +46,11 @@ namespace LiveHelperWindowsObsRank
             builder.AppendLine();
             builder.AppendLine("참고: 공개 데이터 기준 비교이며 1등 노출이나 조회수 상승을 보장하지 않습니다.");
             return builder.ToString();
+        }
+
+        private static string RankValueText(int rank)
+        {
+            return rank > 0 ? rank + "위" : "확인 불가";
         }
     }
 
@@ -66,11 +78,17 @@ namespace LiveHelperWindowsObsRank
 
     internal static class ComparisonAnalyzer
     {
-        public static ComparisonReport Empty(string keyword, string ownChannelTitle, string summary)
+        public static ComparisonReport Empty(string keyword, string ownChannelTitle, string summary, int ownNoFilterRank)
         {
             ComparisonReport report = new ComparisonReport();
             report.Keyword = keyword == null ? "" : keyword.Trim();
             report.OwnChannelTitle = ownChannelTitle ?? "";
+            report.OwnNoFilterRank = ownNoFilterRank;
+            report.ComparisonTitle = ownNoFilterRank == 1
+                ? "내 채널(노필터 1위) - 비교 대상 없음"
+                : "LiveRank 비교 분석";
+            report.CompetitorRankLabel = "비교 대상 없음";
+            report.CompetitorShortLabel = "비교 대상";
             report.Summary = summary;
             report.Priorities = "비교 대상이 없어 점수 격차와 개선 우선순위는 산정하지 않았습니다.";
             report.TitleSuggestion = TitleSuggestion(report.Keyword);
@@ -78,11 +96,16 @@ namespace LiveHelperWindowsObsRank
             return report;
         }
 
-        public static ComparisonReport Build(string keyword, string ownChannelTitle, VideoInfo ownVideo, VideoInfo competitorVideo, ChannelStats ownStats, ChannelStats competitorStats)
+        public static ComparisonReport Build(string keyword, string ownChannelTitle, VideoInfo ownVideo, VideoInfo competitorVideo, ChannelStats ownStats, ChannelStats competitorStats, int ownNoFilterRank, int competitorNoFilterRank)
         {
             ComparisonReport report = new ComparisonReport();
             report.Keyword = keyword == null ? "" : keyword.Trim();
             report.OwnChannelTitle = ownChannelTitle ?? "";
+            report.OwnNoFilterRank = ownNoFilterRank;
+            report.CompetitorNoFilterRank = competitorNoFilterRank;
+            report.CompetitorRankLabel = RankLabel(competitorNoFilterRank);
+            report.CompetitorShortLabel = ShortRankLabel(competitorNoFilterRank);
+            report.ComparisonTitle = ComparisonTitle(ownNoFilterRank, report.CompetitorRankLabel);
 
             int ownTitle = TitleScore(ownVideo.Title, report.Keyword);
             int competitorTitle = TitleScore(competitorVideo.Title, report.Keyword);
@@ -126,11 +149,35 @@ namespace LiveHelperWindowsObsRank
             report.CompetitorTitle = competitorVideo.Title;
             report.OwnTitle = ownVideo.Title;
             report.TitleSuggestion = TitleSuggestion(report.Keyword);
-            report.Summary = "내 채널 " + report.OwnScore + "점(" + report.OwnGrade + ") / 노필터 라이브 1위 "
+            report.Summary = "내 채널 " + report.OwnScore + "점(" + report.OwnGrade + ") / " + report.CompetitorRankLabel + " "
                 + report.CompetitorScore + "점(" + report.CompetitorGrade + ")";
-            report.Priorities = PriorityText(labels, gaps, weights, report.Keyword);
+            report.Priorities = PriorityText(labels, gaps, weights, report.Keyword, report.CompetitorShortLabel);
             report.Detail = DetailReport(report, ownVideo, competitorVideo, ownStats, competitorStats, labels, ownScores, competitorScores, gaps, weights);
             return report;
+        }
+
+        private static string RankLabel(int rank)
+        {
+            return rank > 0 ? "노필터 라이브 " + rank + "위" : "노필터 라이브 비교 대상";
+        }
+
+        private static string ShortRankLabel(int rank)
+        {
+            return rank > 0 ? rank + "위" : "비교 대상";
+        }
+
+        private static string RankValueText(int rank)
+        {
+            return rank > 0 ? rank + "위" : "확인 불가";
+        }
+
+        private static string ComparisonTitle(int ownRank, string competitorLabel)
+        {
+            if (ownRank > 0)
+            {
+                return "내 채널(노필터 " + ownRank + "위) vs " + competitorLabel;
+            }
+            return "내 채널 vs " + competitorLabel;
         }
 
         private static int TitleScore(string title, string keyword)
@@ -248,7 +295,7 @@ namespace LiveHelperWindowsObsRank
             return "F";
         }
 
-        private static string PriorityText(string[] labels, int[] gaps, int[] weights, string keyword)
+        private static string PriorityText(string[] labels, int[] gaps, int[] weights, string keyword, string competitorLabel)
         {
             StringBuilder builder = new StringBuilder();
             bool[] used = new bool[labels.Length];
@@ -269,7 +316,7 @@ namespace LiveHelperWindowsObsRank
                 used[best] = true;
                 if (builder.Length > 0) builder.Append("\r\n");
                 builder.Append(pick + 1).Append(". ").Append(labels[best])
-                    .Append(": 1위보다 ").Append(gaps[best]).Append("점 낮음\r\n")
+                    .Append(": ").Append(competitorLabel).Append("보다 ").Append(gaps[best]).Append("점 낮음\r\n")
                     .Append("   이유: ").Append(CategoryReason(labels[best])).Append("\r\n")
                     .Append("   할 일: ").Append(CategoryAction(labels[best], keyword));
             }
@@ -292,7 +339,8 @@ namespace LiveHelperWindowsObsRank
             builder.AppendLine("LiveRank 비교 분석");
             builder.AppendLine("키워드: " + report.Keyword);
             builder.AppendLine("내 채널: " + report.OwnChannelTitle);
-            builder.AppendLine("노필터 라이브 1위: 비교 대상 없음");
+            builder.AppendLine("내 노필터 순위: " + RankValueText(report.OwnNoFilterRank));
+            builder.AppendLine("비교 대상: 비교 대상 없음");
             builder.AppendLine();
             builder.AppendLine("이번 결과의 의미");
             builder.AppendLine("- " + summary);
@@ -326,26 +374,32 @@ namespace LiveHelperWindowsObsRank
             int overallGap = report.CompetitorScore - report.OwnScore;
             StringBuilder builder = new StringBuilder();
             builder.AppendLine("유튜브 라이브 경쟁력 진단");
-            builder.AppendLine("내 채널 vs 노필터 라이브 1위");
+            builder.AppendLine(report.ComparisonTitle);
             builder.AppendLine("================================");
             builder.AppendLine("키워드: " + report.Keyword);
             builder.AppendLine("내 채널: " + report.OwnChannelTitle);
-            builder.AppendLine("노필터 라이브 1위: " + report.CompetitorChannelTitle);
+            builder.AppendLine("내 노필터 순위: " + RankValueText(report.OwnNoFilterRank));
+            builder.AppendLine("비교 대상: " + report.CompetitorRankLabel);
+            builder.AppendLine(report.CompetitorRankLabel + ": " + report.CompetitorChannelTitle);
             builder.AppendLine();
             builder.AppendLine("종합 점수");
             builder.AppendLine("- 내 채널: " + report.OwnScore + "점(" + report.OwnGrade + ")");
-            builder.AppendLine("- 1위 채널: " + report.CompetitorScore + "점(" + report.CompetitorGrade + ")");
+            builder.AppendLine("- " + report.CompetitorRankLabel + ": " + report.CompetitorScore + "점(" + report.CompetitorGrade + ")");
             builder.AppendLine("- 격차: " + (overallGap > 0 ? "-" + overallGap : "+" + Math.Abs(overallGap)) + "점");
             builder.AppendLine();
             builder.AppendLine("결론");
             builder.AppendLine("- " + report.Summary);
             if (overallGap > 0)
             {
-                builder.AppendLine("- 현재 기준으로 1위 채널이 " + overallGap + "점 앞섭니다. 아래 약점부터 고치면 1위 가능성을 높일 수 있습니다.");
+                builder.AppendLine("- 현재 기준으로 " + report.CompetitorRankLabel + "가 " + overallGap + "점 앞섭니다. 아래 약점부터 고치면 상위 진입 가능성을 높일 수 있습니다.");
             }
             else if (overallGap < 0)
             {
-                builder.AppendLine("- 현재 기준으로 내 채널이 " + Math.Abs(overallGap) + "점 앞섭니다. 강점은 유지하고 낮은 항목만 보강하세요.");
+                builder.AppendLine("- 현재 기준으로 내 채널이 " + report.CompetitorRankLabel + "보다 " + Math.Abs(overallGap) + "점 앞섭니다. 강점은 유지하고 낮은 항목만 보강하세요.");
+                if (report.OwnNoFilterRank == 1)
+                {
+                    builder.AppendLine("- 내 채널이 노필터 라이브 1위라서, 이번 리포트는 아래 순위의 비교 가능한 라이브를 참고 대상으로 삼았습니다.");
+                }
             }
             else
             {
@@ -364,19 +418,19 @@ namespace LiveHelperWindowsObsRank
             builder.AppendLine();
             builder.AppendLine("실제 비교 대상");
             builder.AppendLine("- 내 제목: " + Safe(ownVideo.Title));
-            builder.AppendLine("- 1위 제목: " + Safe(competitorVideo.Title));
+            builder.AppendLine("- " + report.CompetitorShortLabel + " 제목: " + Safe(competitorVideo.Title));
             builder.AppendLine("- 내 현재 시청자/조회수: " + MetricText(ownVideo));
-            builder.AppendLine("- 1위 현재 시청자/조회수: " + MetricText(competitorVideo));
+            builder.AppendLine("- " + report.CompetitorShortLabel + " 현재 시청자/조회수: " + MetricText(competitorVideo));
             builder.AppendLine("- 내 구독자 수: " + NumberText(ownStats.SubscriberCount));
-            builder.AppendLine("- 1위 구독자 수: " + NumberText(competitorStats.SubscriberCount));
+            builder.AppendLine("- " + report.CompetitorShortLabel + " 구독자 수: " + NumberText(competitorStats.SubscriberCount));
             builder.AppendLine();
-            AppendCoreDiagnosis(builder, labels, gaps);
+            AppendCoreDiagnosis(builder, labels, gaps, report.CompetitorShortLabel);
             builder.AppendLine("항목별 진단");
             for (int index = 0; index < labels.Length; index += 1)
             {
-                builder.AppendLine((index + 1) + ". " + DisplayLabel(labels[index]) + ": 내 " + ownScores[index] + "점 / 1위 " + competitorScores[index] + "점 / " + GapText(gaps[index]));
+                builder.AppendLine((index + 1) + ". " + DisplayLabel(labels[index]) + ": 내 " + ownScores[index] + "점 / " + report.CompetitorShortLabel + " " + competitorScores[index] + "점 / " + GapText(gaps[index], report.CompetitorShortLabel));
                 builder.AppendLine("   판정: " + StatusText(gaps[index]));
-                builder.AppendLine("   근거: " + CategoryEvidence(labels[index], report.Keyword, ownVideo, competitorVideo, ownStats, competitorStats));
+                builder.AppendLine("   근거: " + CategoryEvidence(labels[index], report.Keyword, ownVideo, competitorVideo, ownStats, competitorStats, report.CompetitorShortLabel));
                 builder.AppendLine("   의미: " + CategoryReason(labels[index]));
                 builder.AppendLine("   할 일: " + CategoryAction(labels[index], report.Keyword));
             }
@@ -385,7 +439,7 @@ namespace LiveHelperWindowsObsRank
             builder.AppendLine(report.Priorities);
             builder.AppendLine();
             builder.AppendLine("최종 해석");
-            builder.AppendLine(FinalInterpretation(overallGap, labels, gaps));
+            builder.AppendLine(FinalInterpretation(overallGap, labels, gaps, report.CompetitorRankLabel));
             builder.AppendLine();
             builder.AppendLine("제목 개선 예시");
             builder.AppendLine(report.TitleSuggestion);
@@ -397,7 +451,7 @@ namespace LiveHelperWindowsObsRank
             return builder.ToString();
         }
 
-        private static void AppendCoreDiagnosis(StringBuilder builder, string[] labels, int[] gaps)
+        private static void AppendCoreDiagnosis(StringBuilder builder, string[] labels, int[] gaps, string competitorLabel)
         {
             int worst = -1;
             int second = -1;
@@ -420,8 +474,8 @@ namespace LiveHelperWindowsObsRank
             }
             builder.AppendLine("핵심 진단");
             if (best >= 0) builder.AppendLine("- 강점: " + DisplayLabel(labels[best]) + "은 내 채널이 " + Math.Abs(gaps[best]) + "점 앞섭니다.");
-            else builder.AppendLine("- 강점: 현재 공개 지표상 1위보다 확실히 앞선 항목은 크지 않습니다.");
-            if (worst >= 0) builder.AppendLine("- 치명적 격차: " + DisplayLabel(labels[worst]) + "에서 1위가 " + gaps[worst] + "점 앞섭니다.");
+            else builder.AppendLine("- 강점: 현재 공개 지표상 " + competitorLabel + "보다 확실히 앞선 항목은 크지 않습니다.");
+            if (worst >= 0) builder.AppendLine("- 치명적 격차: " + DisplayLabel(labels[worst]) + "에서 " + competitorLabel + "가 " + gaps[worst] + "점 앞섭니다.");
             if (second >= 0) builder.AppendLine("- 두 번째 약점: " + DisplayLabel(labels[second]) + "도 " + gaps[second] + "점 차이가 납니다.");
             builder.AppendLine("- 결론: 점수를 보는 화면이 아니라, 위 약점부터 고치기 위한 실행 순서표입니다.");
             builder.AppendLine();
@@ -469,14 +523,14 @@ namespace LiveHelperWindowsObsRank
             return "동등";
         }
 
-        private static string CategoryEvidence(string label, string keyword, VideoInfo ownVideo, VideoInfo competitorVideo, ChannelStats ownStats, ChannelStats competitorStats)
+        private static string CategoryEvidence(string label, string keyword, VideoInfo ownVideo, VideoInfo competitorVideo, ChannelStats ownStats, ChannelStats competitorStats, string competitorLabel)
         {
-            if (label.StartsWith("제목")) return "내 제목 " + TitleFacts(ownVideo.Title, keyword) + " / 1위 제목 " + TitleFacts(competitorVideo.Title, keyword);
-            if (label.StartsWith("썸네일")) return "내 썸네일 " + ThumbnailFacts(ownVideo.Thumbnail) + " / 1위 썸네일 " + ThumbnailFacts(competitorVideo.Thumbnail);
-            if (label.StartsWith("메타")) return "내 설명 " + MetadataFacts(ownVideo.Description, ownVideo.TagCount, keyword) + " / 1위 설명 " + MetadataFacts(competitorVideo.Description, competitorVideo.TagCount, keyword);
-            if (label.StartsWith("라이브")) return "내 방송 " + MetricText(ownVideo) + " / 1위 방송 " + MetricText(competitorVideo);
-            if (label.StartsWith("채널")) return "내 구독자 " + NumberText(ownStats.SubscriberCount) + " / 1위 구독자 " + NumberText(competitorStats.SubscriberCount);
-            if (label.StartsWith("시청자")) return "내 반응 " + EngagementFacts(ownVideo) + " / 1위 반응 " + EngagementFacts(competitorVideo);
+            if (label.StartsWith("제목")) return "내 제목 " + TitleFacts(ownVideo.Title, keyword) + " / " + competitorLabel + " 제목 " + TitleFacts(competitorVideo.Title, keyword);
+            if (label.StartsWith("썸네일")) return "내 썸네일 " + ThumbnailFacts(ownVideo.Thumbnail) + " / " + competitorLabel + " 썸네일 " + ThumbnailFacts(competitorVideo.Thumbnail);
+            if (label.StartsWith("메타")) return "내 설명 " + MetadataFacts(ownVideo.Description, ownVideo.TagCount, keyword) + " / " + competitorLabel + " 설명 " + MetadataFacts(competitorVideo.Description, competitorVideo.TagCount, keyword);
+            if (label.StartsWith("라이브")) return "내 방송 " + MetricText(ownVideo) + " / " + competitorLabel + " 방송 " + MetricText(competitorVideo);
+            if (label.StartsWith("채널")) return "내 구독자 " + NumberText(ownStats.SubscriberCount) + " / " + competitorLabel + " 구독자 " + NumberText(competitorStats.SubscriberCount);
+            if (label.StartsWith("시청자")) return "내 반응 " + EngagementFacts(ownVideo) + " / " + competitorLabel + " 반응 " + EngagementFacts(competitorVideo);
             return "이번 Windows 소스 버전은 반복 방송 시간대 상세 분석 전 단계라 기본값으로 비교했습니다.";
         }
 
@@ -519,7 +573,7 @@ namespace LiveHelperWindowsObsRank
             return percent.ToString("0.00") + "%";
         }
 
-        private static string FinalInterpretation(int overallGap, string[] labels, int[] gaps)
+        private static string FinalInterpretation(int overallGap, string[] labels, int[] gaps, string competitorLabel)
         {
             int worst = -1;
             int second = -1;
@@ -537,7 +591,7 @@ namespace LiveHelperWindowsObsRank
                 }
             }
             StringBuilder builder = new StringBuilder();
-            builder.Append(overallGap > 0 ? "내 채널은 현재 1위보다 종합 경쟁력이 부족합니다. " : "내 채널은 종합 점수에서 밀리지 않지만 세부 약점은 계속 보강해야 합니다. ");
+            builder.Append(overallGap > 0 ? "내 채널은 현재 " + competitorLabel + "보다 종합 경쟁력이 부족합니다. " : "내 채널은 " + competitorLabel + "보다 종합 점수에서 밀리지 않지만 세부 약점은 계속 보강해야 합니다. ");
             if (worst >= 0)
             {
                 builder.Append("1순위 원인은 ").Append(DisplayLabel(labels[worst])).Append("입니다.");
@@ -548,9 +602,9 @@ namespace LiveHelperWindowsObsRank
             return builder.ToString();
         }
 
-        private static string GapText(int competitorMinusOwn)
+        private static string GapText(int competitorMinusOwn, string competitorLabel)
         {
-            if (competitorMinusOwn > 0) return "1위가 " + competitorMinusOwn + "점 앞섬";
+            if (competitorMinusOwn > 0) return competitorLabel + "가 " + competitorMinusOwn + "점 앞섬";
             if (competitorMinusOwn < 0) return "내 채널이 " + Math.Abs(competitorMinusOwn) + "점 앞섬";
             return "동점";
         }
