@@ -178,15 +178,17 @@ namespace LiveHelperWindowsObsRank
         {
             Dictionary<string, object> payload = GetJson("videos", Query(new Dictionary<string, string>
             {
-                {"part", "snippet"},
+                {"part", "snippet,liveStreamingDetails"},
                 {"id", videoId},
                 {"maxResults", "1"},
-                {"fields", "items(id,snippet(liveBroadcastContent))"}
+                {"fields", "items(id,snippet(liveBroadcastContent),liveStreamingDetails(actualEndTime))"}
             }));
 
             foreach (Dictionary<string, object> item in Items(payload))
             {
                 Dictionary<string, object> snippet = Dict(item, "snippet");
+                Dictionary<string, object> live = Dict(item, "liveStreamingDetails");
+                if (Str(live, "actualEndTime").Length > 0) return false;
                 return Str(snippet, "liveBroadcastContent") == "live";
             }
             return false;
