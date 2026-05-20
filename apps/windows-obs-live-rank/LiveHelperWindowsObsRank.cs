@@ -616,6 +616,10 @@ namespace LiveHelperWindowsObsRank
             if (File.Exists(reportPath))
             {
                 latestComparisonReport = File.ReadAllText(reportPath, Encoding.UTF8);
+                if (!IsSupportedComparisonReport(latestComparisonReport))
+                {
+                    ClearLatestComparisonReport();
+                }
             }
         }
 
@@ -676,11 +680,40 @@ namespace LiveHelperWindowsObsRank
         {
             if (!string.IsNullOrWhiteSpace(latestComparisonReport))
             {
+                if (!IsSupportedComparisonReport(latestComparisonReport))
+                {
+                    ClearLatestComparisonReport();
+                    GenerateComparisonNow();
+                    return;
+                }
                 new ComparisonReportForm(latestComparisonReport).Show(this);
                 return;
             }
 
             GenerateComparisonNow();
+        }
+
+        private bool IsSupportedComparisonReport(string report)
+        {
+            if (string.IsNullOrWhiteSpace(report)) return false;
+            if (HasLegacyComparisonCategory(report)) return false;
+            if (report.Contains("이번 결과의 의미")) return true;
+            return report.Contains("트래픽 질량")
+                && report.Contains("채널 영향")
+                && report.Contains("기본 최적화")
+                && report.Contains("반응 품질 참고");
+        }
+
+        private bool HasLegacyComparisonCategory(string report)
+        {
+            string text = report ?? "";
+            return text.Contains("제목 최적화")
+                || text.Contains("썸네일(클릭력)")
+                || text.Contains("메타데이터")
+                || text.Contains("라이브 현재 성과")
+                || text.Contains("채널 신뢰도")
+                || text.Contains("시청자 반응")
+                || text.Contains("발행 전략");
         }
 
         private bool IsComparisonReady()
@@ -1295,8 +1328,14 @@ namespace LiveHelperWindowsObsRank
                     Match category = Regex.Match(line, @"^\d+\.\s*(.+?):\s*내\s*(\d+)점\s*/\s*(.+?)\s*(\d+)점\s*/\s*(.+)$");
                     if (category.Success)
                     {
+                        string categoryName = category.Groups[1].Value.Trim();
+                        if (!IsScoreCategoryName(categoryName))
+                        {
+                            current = null;
+                            continue;
+                        }
                         current = new CategoryVisual();
-                        current.Name = category.Groups[1].Value.Trim();
+                        current.Name = categoryName;
                         current.OwnScore = IntValue(category.Groups[2].Value);
                         string categoryRankLabel = category.Groups[3].Value.Trim();
                         if (categoryRankLabel.Length > 0 && categoryRankLabel != "1위")
@@ -1394,6 +1433,12 @@ namespace LiveHelperWindowsObsRank
             if (gap >= 6) return "개선 권장";
             if (gap <= -6) return "내 강점";
             return "동등";
+        }
+
+        private static bool IsScoreCategoryName(string name)
+        {
+            string text = name ?? "";
+            return text.StartsWith("트래픽") || text.StartsWith("채널") || text.StartsWith("기본");
         }
     }
 

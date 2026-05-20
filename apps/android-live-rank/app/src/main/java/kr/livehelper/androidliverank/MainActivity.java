@@ -463,6 +463,11 @@ public final class MainActivity extends Activity implements SharedPreferences.On
             comparisonDashboardView.setVisibility(View.GONE);
             comparisonReportText.setText("아직 비교 분석이 없습니다.\n방송 시작 후 50분이 지나면 자동으로 생성됩니다.");
             comparisonReportText.setVisibility(View.VISIBLE);
+        } else if (!isSupportedComparisonReport(report)) {
+            prefs.edit().remove("lastComparisonReport").apply();
+            comparisonDashboardView.setVisibility(View.GONE);
+            comparisonReportText.setText("이전 형식의 비교 분석은 새 화면에 표시하지 않습니다.\n방송을 다시 분석하면 3대 카테고리 구조로 새 리포트가 생성됩니다.");
+            comparisonReportText.setVisibility(View.VISIBLE);
         } else {
             comparisonReportText.setVisibility(View.GONE);
             comparisonDashboardView.setReport(displayComparisonReport(report));
@@ -472,6 +477,9 @@ public final class MainActivity extends Activity implements SharedPreferences.On
 
     private String displayComparisonReport(String report) {
         if (report == null || report.trim().length() == 0) return "";
+        if (!isSupportedComparisonReport(report)) {
+            return "";
+        }
         if (report.contains("이번에 비교한 것") || report.contains("이번 결과의 의미")) {
             return report;
         }
@@ -519,6 +527,27 @@ public final class MainActivity extends Activity implements SharedPreferences.On
         builder.append("- 새 버전에서는 위 해석이 기본 리포트 안에 더 자세히 포함됩니다.\n");
         builder.append("- 1등 노출이나 조회수 상승을 보장하지 않고, 공개 데이터 기준 개선 방향만 제공합니다.");
         return builder.toString();
+    }
+
+    private boolean isSupportedComparisonReport(String report) {
+        if (report == null || report.trim().length() == 0) return false;
+        if (hasLegacyComparisonCategory(report)) return false;
+        if (report.contains("이번 결과의 의미")) return true;
+        return report.contains("트래픽 질량")
+            && report.contains("채널 영향")
+            && report.contains("기본 최적화")
+            && report.contains("반응 품질 참고");
+    }
+
+    private boolean hasLegacyComparisonCategory(String report) {
+        String text = report == null ? "" : report;
+        return text.contains("제목 최적화")
+            || text.contains("썸네일(클릭력)")
+            || text.contains("메타데이터")
+            || text.contains("라이브 현재 성과")
+            || text.contains("채널 신뢰도")
+            || text.contains("시청자 반응")
+            || text.contains("발행 전략");
     }
 
     private String extractReportLine(String report, String prefix) {

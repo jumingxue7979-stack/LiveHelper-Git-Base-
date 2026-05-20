@@ -256,7 +256,7 @@ public final class ComparisonDashboardView extends View {
         if (label.startsWith("트래픽")) return "트래픽 질량 (60점 묶음)";
         if (label.startsWith("채널")) return "채널 영향 (30점 묶음)";
         if (label.startsWith("기본")) return "기본 최적화 (10점 묶음)";
-        return "반응 품질 (점수 분리)";
+        return label == null || label.trim().length() == 0 ? "확인 필요" : label.trim();
     }
 
     private String diagnosisTitle(Row row) {
@@ -264,7 +264,7 @@ public final class ComparisonDashboardView extends View {
         if (label.startsWith("트래픽")) return "트래픽 질량 부족";
         if (label.startsWith("채널")) return "채널 영향 부족";
         if (label.startsWith("기본")) return "기본 최적화 부족";
-        return "반응 품질 참고";
+        return "추가 점검";
     }
 
     private String diagnosisText(Row row) {
@@ -280,7 +280,7 @@ public final class ComparisonDashboardView extends View {
         if (label.startsWith("기본")) {
             return "기본 최적화가 " + competitor + "보다 " + gap + "점 낮음. 제목·설명 첫 부분에 [" + blank(data.keyword, "검색 키워드") + "]를 분명히 넣으세요.";
         }
-        return "채팅 참여율과 좋아요 반응은 총점과 분리해 참고합니다.";
+        return "이전 형식 항목은 3대 카테고리 점수에 섞지 않고 새 분석에서 다시 확인합니다.";
     }
 
     private String blank(String value, String fallback) {
@@ -363,6 +363,10 @@ public final class ComparisonDashboardView extends View {
                 }
                 Matcher rowStart = Pattern.compile("^\\d+\\.\\s*(.+?)\\s{2,}(핵심 약점|개선 권장|내 강점|동등)").matcher(line);
                 if (rowStart.find()) {
+                    if (!isScoreCategory(rowStart.group(1).trim())) {
+                        current = null;
+                        continue;
+                    }
                     current = new Row();
                     current.name = rowStart.group(1).trim();
                     rows.add(current);
@@ -385,7 +389,7 @@ public final class ComparisonDashboardView extends View {
                 addFirst(ordered, key);
             }
             for (Row row : rows) {
-                if (!ordered.contains(row)) ordered.add(row);
+                if (!ordered.contains(row) && isScoreCategory(row.name)) ordered.add(row);
             }
             return ordered;
         }
@@ -411,10 +415,15 @@ public final class ComparisonDashboardView extends View {
         }
 
         private boolean matches(String label, String key) {
-            if ("traffic".equals(key)) return label.startsWith("트래픽") || label.startsWith("라이브") || label.startsWith("시청자 수");
+            if ("traffic".equals(key)) return label.startsWith("트래픽");
             if ("channel".equals(key)) return label.startsWith("채널");
-            if ("basic".equals(key)) return label.startsWith("기본") || label.startsWith("메타") || label.startsWith("검색") || label.startsWith("제목") || label.startsWith("썸네일");
-            return label.startsWith("발행") || label.startsWith("방송");
+            if ("basic".equals(key)) return label.startsWith("기본");
+            return false;
+        }
+
+        private boolean isScoreCategory(String label) {
+            String text = label == null ? "" : label.trim();
+            return text.startsWith("트래픽") || text.startsWith("채널") || text.startsWith("기본");
         }
 
         private int extractScore(String line) {

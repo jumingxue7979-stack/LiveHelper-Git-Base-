@@ -30,6 +30,7 @@ namespace LiveHelperWindowsObsRank
             if (!string.IsNullOrWhiteSpace(Detail)) return Detail;
             StringBuilder builder = new StringBuilder();
             builder.AppendLine("LiveRank 비교 분석");
+            builder.AppendLine("리포트 버전: work6-channel-analysis");
             builder.AppendLine("키워드: " + Keyword);
             builder.AppendLine("내 채널: " + OwnChannelTitle);
             builder.AppendLine("내 노필터 순위: " + RankValueText(OwnNoFilterRank));
@@ -397,6 +398,7 @@ namespace LiveHelperWindowsObsRank
         {
             StringBuilder builder = new StringBuilder();
             builder.AppendLine("LiveRank 비교 분석");
+            builder.AppendLine("리포트 버전: work6-channel-analysis");
             builder.AppendLine("키워드: " + report.Keyword);
             builder.AppendLine("내 채널: " + report.OwnChannelTitle);
             builder.AppendLine("내 노필터 순위: " + RankValueText(report.OwnNoFilterRank));
@@ -434,6 +436,7 @@ namespace LiveHelperWindowsObsRank
             int overallGap = report.CompetitorScore - report.OwnScore;
             StringBuilder builder = new StringBuilder();
             builder.AppendLine("유튜브 라이브 경쟁력 진단");
+            builder.AppendLine("리포트 버전: work6-channel-analysis");
             builder.AppendLine(report.ComparisonTitle);
             builder.AppendLine("================================");
             builder.AppendLine("키워드: " + report.Keyword);

@@ -254,6 +254,7 @@ final class ComparisonAnalyzer {
     private static String emptyDetail(ComparisonReport report, String summary) {
         StringBuilder builder = new StringBuilder();
         builder.append("LiveRank 비교 분석\n");
+        builder.append("리포트 버전: work6-channel-analysis\n");
         builder.append("키워드: ").append(report.keyword).append("\n");
         builder.append("내 채널: ").append(report.ownChannelTitle).append("\n");
         builder.append("내 노필터 순위: ").append(rankValueText(report.ownNoFilterRank)).append("\n");
@@ -286,6 +287,7 @@ final class ComparisonAnalyzer {
         int overallGap = report.competitorScore - report.ownScore;
         StringBuilder builder = new StringBuilder();
         builder.append("LIVERANK 비교 리포트\n");
+        builder.append("리포트 버전: work6-channel-analysis\n");
         builder.append(report.comparisonTitle).append("\n");
         builder.append("==============================\n");
         builder.append("키워드: ").append(report.keyword).append("\n");
@@ -450,6 +452,7 @@ final class ComparisonAnalyzer {
         int overallGap = report.competitorScore - report.ownScore;
         StringBuilder builder = new StringBuilder();
         builder.append("유튜브 라이브 경쟁력 진단\n");
+        builder.append("리포트 버전: work6-channel-analysis\n");
         builder.append(report.comparisonTitle).append("\n");
         builder.append("================================\n");
         builder.append("키워드: ").append(report.keyword).append("\n");
