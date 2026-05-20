@@ -42,39 +42,52 @@ final class ComparisonAnalyzer {
         int competitorThumb = thumbnailScore(competitorVideo.thumbnail);
         int ownMeta = metadataScore(ownVideo.description, ownVideo.tagCount, report.keyword);
         int competitorMeta = metadataScore(competitorVideo.description, competitorVideo.tagCount, report.keyword);
-        int[] currentPair = relativePair(
-            ownVideo.currentViewers != null ? ownVideo.currentViewers : ownVideo.viewCount,
-            competitorVideo.currentViewers != null ? competitorVideo.currentViewers : competitorVideo.viewCount
-        );
+        int[] currentPair = relativePair(ownVideo.currentViewers, competitorVideo.currentViewers);
         int[] subscriberPair = relativePair(ownStats.subscriberCount, competitorStats.subscriberCount);
-        int ownAuthority = average(new int[] { subscriberPair[0], ccvRateScore(ownVideo.currentViewers, ownStats.subscriberCount) });
-        int competitorAuthority = average(new int[] { subscriberPair[1], ccvRateScore(competitorVideo.currentViewers, competitorStats.subscriberCount) });
-        int ownEngagement = engagementScore(ownVideo);
-        int competitorEngagement = engagementScore(competitorVideo);
-        int ownPublishing = 50;
-        int competitorPublishing = 50;
+        int[] channelViewPair = relativePair(ownStats.viewCount, competitorStats.viewCount);
+        int[] channelVideoPair = relativePair(ownStats.videoCount, competitorStats.videoCount);
+        int ownTrafficMass = weightedTotal(new int[] {
+            currentPair[0],
+            rankAccessScore(ownNoFilterRank),
+            ccvRateScore(ownVideo.currentViewers, ownStats.subscriberCount)
+        }, new int[] { 40, 10, 10 });
+        int competitorTrafficMass = weightedTotal(new int[] {
+            currentPair[1],
+            rankAccessScore(competitorNoFilterRank),
+            ccvRateScore(competitorVideo.currentViewers, competitorStats.subscriberCount)
+        }, new int[] { 40, 10, 10 });
+        int ownChannelInfluence = weightedTotal(new int[] {
+            subscriberPair[0],
+            average(new int[] { channelViewPair[0], channelVideoPair[0] }),
+            channelInfoScore(ownStats)
+        }, new int[] { 15, 10, 5 });
+        int competitorChannelInfluence = weightedTotal(new int[] {
+            subscriberPair[1],
+            average(new int[] { channelViewPair[1], channelVideoPair[1] }),
+            channelInfoScore(competitorStats)
+        }, new int[] { 15, 10, 5 });
+        int ownBasicOptimization = weightedTotal(new int[] { ownTitle, ownMeta, ownThumb }, new int[] { 4, 3, 3 });
+        int competitorBasicOptimization = weightedTotal(new int[] { competitorTitle, competitorMeta, competitorThumb }, new int[] { 4, 3, 3 });
         String[] labels = new String[] {
-            "라이브 현재 성과", "채널 신뢰도", "메타데이터", "제목 최적화", "썸네일 기본 평가", "시청자 반응", "발행 전략"
+            ComparisonCategory.TRAFFIC_MASS.label,
+            ComparisonCategory.CHANNEL_INFLUENCE.label,
+            ComparisonCategory.BASIC_OPTIMIZATION.label
         };
         int[] ownScores = new int[] {
-            currentPair[0], ownAuthority, ownMeta, ownTitle, ownThumb, ownEngagement, ownPublishing
+            ownTrafficMass, ownChannelInfluence, ownBasicOptimization
         };
         int[] competitorScores = new int[] {
-            currentPair[1], competitorAuthority, competitorMeta, competitorTitle, competitorThumb, competitorEngagement, competitorPublishing
+            competitorTrafficMass, competitorChannelInfluence, competitorBasicOptimization
         };
         int[] gaps = new int[] {
-            currentPair[1] - currentPair[0],
-            competitorAuthority - ownAuthority,
-            competitorMeta - ownMeta,
-            competitorTitle - ownTitle,
-            competitorThumb - ownThumb,
-            competitorEngagement - ownEngagement,
-            competitorPublishing - ownPublishing
+            competitorTrafficMass - ownTrafficMass,
+            competitorChannelInfluence - ownChannelInfluence,
+            competitorBasicOptimization - ownBasicOptimization
         };
-        int[] weights = new int[] { 25, 15, 10, 15, 10, 15, 10 };
+        int[] weights = new int[] { 60, 30, 10 };
 
-        report.ownScore = weightedTotal(new int[] { ownTitle, ownThumb, ownMeta, currentPair[0], ownAuthority, ownEngagement, ownPublishing });
-        report.competitorScore = weightedTotal(new int[] { competitorTitle, competitorThumb, competitorMeta, currentPair[1], competitorAuthority, competitorEngagement, competitorPublishing });
+        report.ownScore = weightedTotal(ownScores, weights);
+        report.competitorScore = weightedTotal(competitorScores, weights);
         report.ownGrade = grade(report.ownScore);
         report.competitorGrade = grade(report.competitorScore);
         report.competitorChannelTitle = competitorVideo.channelTitle;
@@ -168,19 +181,22 @@ final class ComparisonAnalyzer {
         return 30;
     }
 
-    private static int engagementScore(VideoInfo video) {
-        int likeScore = ratioScore(video.likeCount, video.viewCount, new double[] { 0.05, 0.03, 0.01 }, new int[] { 100, 80, 60, 30 });
-        int commentScore = ratioScore(video.commentCount, video.viewCount, new double[] { 0.01, 0.005, 0.001 }, new int[] { 100, 75, 50, 25 });
-        return weightedTotal(new int[] { likeScore, commentScore }, new int[] { 40, 30 });
+    private static int rankAccessScore(int rank) {
+        if (rank <= 0) return 0;
+        if (rank == 1) return 100;
+        if (rank <= 3) return 80;
+        if (rank <= 5) return 60;
+        if (rank <= 10) return 40;
+        if (rank <= 20) return 20;
+        return 0;
     }
 
-    private static int ratioScore(Long numerator, Long denominator, double[] thresholds, int[] scores) {
-        if (numerator == null || denominator == null || denominator.longValue() <= 0) return 0;
-        double ratio = numerator.doubleValue() / denominator.doubleValue();
-        for (int index = 0; index < thresholds.length; index += 1) {
-            if (ratio >= thresholds[index]) return scores[index];
-        }
-        return scores[scores.length - 1];
+    private static int channelInfoScore(ChannelStats stats) {
+        int score = 0;
+        if (stats != null && stats.subscriberCount != null) score += 40;
+        if (stats != null && stats.viewCount != null) score += 30;
+        if (stats != null && stats.videoCount != null) score += 30;
+        return score;
     }
 
     private static int average(int[] values) {
@@ -224,7 +240,7 @@ final class ComparisonAnalyzer {
                 .append(" 격차 기여도 +").append(effectText(gaps[index], weights[index])).append("점");
         }
         return builder.length() == 0
-            ? "큰 약점이 크게 잡히지 않았습니다.\n현재 점수표를 유지하면서 제목, 설명, 시청자 반응을 계속 점검하세요."
+            ? "큰 약점이 크게 잡히지 않았습니다.\n트래픽 질량, 채널 영향, 기본 최적화를 같은 구조로 계속 점검하세요."
             : builder.toString();
     }
 
@@ -296,6 +312,10 @@ final class ComparisonAnalyzer {
             builder.append("   ").append(report.competitorShortLabel).append(" ").append(scoreText(competitorScores[index])).append(" ").append(scoreBar(competitorScores[index])).append("\n");
             builder.append("   핵심: ").append(compactEvidence(labels[index], report.keyword, ownVideo, competitorVideo, ownStats, competitorStats)).append("\n");
         }
+
+        builder.append("\n반응 품질 참고\n");
+        builder.append("- 채팅 참여율: 라이브 채팅 데이터 연결 전 단계\n");
+        builder.append("- 좋아요 반응: ").append(reactionQualityText(ownVideo, competitorVideo, report.competitorShortLabel)).append("\n");
 
         builder.append("\n개선 팁 (1위 따라잡기 전략)\n");
         appendCompactPriorities(builder, labels, gaps, weights, report.keyword);
@@ -381,45 +401,38 @@ final class ComparisonAnalyzer {
     }
 
     private static String compactEvidence(String label, String keyword, VideoInfo ownVideo, VideoInfo competitorVideo, ChannelStats ownStats, ChannelStats competitorStats) {
-        if (label.startsWith("제목")) return "키워드 위치와 클릭 표현 차이";
-        if (label.startsWith("썸네일")) return "모바일 첫인상과 가독성 차이";
-        if (label.startsWith("메타")) return "설명 첫 2줄, 해시태그, 키워드 매칭 차이";
-        if (label.startsWith("라이브")) return "내 " + metricText(ownVideo) + " / 비교대상 " + metricText(competitorVideo);
-        if (label.startsWith("채널")) return "내 구독자 " + numberText(ownStats.subscriberCount) + " / 비교대상 구독자 " + numberText(competitorStats.subscriberCount);
-        if (label.startsWith("시청자")) return "좋아요율과 댓글률 차이";
-        return "방송 시간과 반복 편성 안정성";
+        if (label.startsWith("트래픽")) return "내 " + trafficFacts(ownVideo, ownStats) + " / 비교대상 " + trafficFacts(competitorVideo, competitorStats);
+        if (label.startsWith("채널")) return "내 " + channelFacts(ownStats) + " / 비교대상 " + channelFacts(competitorStats);
+        if (label.startsWith("기본")) return "제목 키워드, 설명 첫 부분, 썸네일 기본 신호";
+        return "채팅 참여율과 좋아요 반응은 점수와 분리해 참고합니다.";
+    }
+
+    private static String reactionQualityText(VideoInfo ownVideo, VideoInfo competitorVideo, String competitorLabel) {
+        return "내 좋아요 반응 " + ratioText(ownVideo.likeCount, ownVideo.viewCount)
+            + " / " + competitorLabel + " 좋아요 반응 " + ratioText(competitorVideo.likeCount, competitorVideo.viewCount);
     }
 
     private static String tipTitle(String label) {
-        if (label.startsWith("라이브")) return "시청자 수 부족";
-        if (label.startsWith("채널")) return "채널 신뢰도 부족";
-        if (label.startsWith("메타")) return "검색 노출 부족";
-        if (label.startsWith("제목")) return "제목 최적화 부족";
-        if (label.startsWith("썸네일")) return "썸네일 클릭 요소 부족";
-        if (label.startsWith("시청자")) return "시청자 참여 부족";
-        return "방송 시간대 보강";
+        if (label.startsWith("트래픽")) return "트래픽 질량 부족";
+        if (label.startsWith("채널")) return "채널 영향 부족";
+        if (label.startsWith("기본")) return "기본 최적화 부족";
+        return "반응 품질 참고";
     }
 
     private static String tipBody(String label, int gap, String keyword) {
         String cleanKeyword = keyword == null || keyword.trim().length() == 0 ? "검색 키워드" : keyword.trim();
-        if (label.startsWith("라이브")) return "라이브 초반 트래픽이 1위 대비 " + gap + "점 낮음. 방송 시작 직후 실시청자 유입 확보가 필요합니다.";
-        if (label.startsWith("채널")) return "채널 SEO 및 구독자 규모·운영 기간이 1위보다 " + gap + "점 낮음. 꾸준한 라이브 방송으로 채널 최적화가 필요합니다.";
-        if (label.startsWith("메타")) return "메타데이터·키워드 매칭이 1위보다 " + gap + "점 낮음. 제목·태그·설명에 [" + cleanKeyword + "] 관련 검색어 보강이 필요합니다.";
-        if (label.startsWith("제목")) return "제목 검색 노출력이 1위보다 " + gap + "점 낮음. 제목 앞부분에 [" + cleanKeyword + "]와 방송 내용을 넣으세요.";
-        if (label.startsWith("썸네일")) return "썸네일 클릭 유도가 1위보다 " + gap + "점 낮음. 제목과 맞는 큰 글자와 핵심 장면을 보여주세요.";
-        if (label.startsWith("시청자")) return "댓글·좋아요 참여가 1위보다 " + gap + "점 낮음. 진행 멘트와 고정댓글로 참여를 요청하세요.";
-        return "방송 시간대 재방문 신호가 1위보다 " + gap + "점 낮음. 같은 요일과 시간대 반복 방송이 필요합니다.";
+        if (label.startsWith("트래픽")) return "현재 시청자와 순위 접근도가 비교 대상보다 " + gap + "점 낮음. 방송 시작 직후 실시청자 유입 확보가 필요합니다.";
+        if (label.startsWith("채널")) return "채널 규모와 운영 기반 신호가 비교 대상보다 " + gap + "점 낮음. 같은 키워드 방송을 꾸준히 쌓아야 합니다.";
+        if (label.startsWith("기본")) return "제목·설명·썸네일 기본 신호가 비교 대상보다 " + gap + "점 낮음. [" + cleanKeyword + "]가 앞부분에 보이게 정리하세요.";
+        return "반응 품질은 총점과 분리해 참고하세요.";
     }
 
     private static String shortAction(String label, String keyword) {
         String cleanKeyword = keyword == null || keyword.trim().length() == 0 ? "핵심 키워드" : keyword.trim();
-        if (label.startsWith("제목")) return "제목 앞 20자 안에 [" + cleanKeyword + "]와 오늘의 차별점을 넣기";
-        if (label.startsWith("썸네일")) return "큰 글자 3~5단어와 핵심 장면이 바로 보이게 바꾸기";
-        if (label.startsWith("메타")) return "설명 첫 2줄에 키워드, 방송 내용, 얻는 이득 넣기";
-        if (label.startsWith("라이브")) return "초반 10분 질문/이벤트/고정댓글로 반응 끌어올리기";
+        if (label.startsWith("트래픽")) return "방송 시작 직후 유입 동선을 점검하고 고정 멘트로 시청 이유를 제시하기";
         if (label.startsWith("채널")) return "다음 방송 예고와 구독 이유를 고정 멘트로 넣기";
-        if (label.startsWith("시청자")) return "좋아요/댓글 요청 문장을 화면과 진행 멘트에 넣기";
-        return "같은 요일과 시간대에 반복 방송하기";
+        if (label.startsWith("기본")) return "제목 앞 20자와 설명 첫 2줄에 [" + cleanKeyword + "]와 오늘의 차별점 넣기";
+        return "채팅 참여율과 좋아요 반응은 참고 지표로만 확인하기";
     }
 
     private static String detailReport(
@@ -460,13 +473,10 @@ final class ComparisonAnalyzer {
         builder.append("- 이 리포트는 보장이 아니라 공개 API 기준 진단입니다.\n\n");
 
         builder.append("이번에 비교한 것\n");
-        builder.append("1. 시청자 수 (초반 트래픽): 현재 시청자 또는 공개 조회수 상대 비교\n");
-        builder.append("2. 채널 SEO 및 (구독자 규모·운영 기간): 구독자 수와 채널 반응 신호\n");
-        builder.append("3. 검색 노출 (메타·키워드): 설명 첫 부분, 해시태그, 태그 수\n");
-        builder.append("4. 제목최적화 (검색 노출력): 키워드 포함, 앞부분 배치, 길이, 클릭 이유\n");
-        builder.append("5. 썸네일 제목과일치 (클릭 유도): API로 확인 가능한 썸네일 존재와 기본 품질 신호\n");
-        builder.append("6. 시청자 참여 (댓글·좋아요): 좋아요/댓글 비율\n");
-        builder.append("7. 방송 시간대 (재방문율): 이번 모바일 버전은 기본값으로 두고 다음 고도화 대상\n\n");
+        builder.append("1. 트래픽 질량 (60점 묶음): 현재 시청자, 노필터 순위 접근도, 구독자 대비 현재 시청자 효율\n");
+        builder.append("2. 채널 영향 (30점 묶음): 구독자 규모, 채널 누적 조회/영상 기반, 채널 정보 확인성\n");
+        builder.append("3. 기본 최적화 (10점 묶음): 제목, 설명, 썸네일 기본 신호\n");
+        builder.append("4. 반응 품질: 채팅 참여율과 좋아요 반응은 점수와 분리해 참고\n\n");
 
         builder.append("실제 비교 대상\n");
         builder.append("- 내 제목: ").append(safe(ownVideo.title)).append("\n");
@@ -488,6 +498,10 @@ final class ComparisonAnalyzer {
             builder.append("   의미: ").append(categoryReason(labels[index])).append("\n");
             builder.append("   할 일: ").append(categoryAction(labels[index], report.keyword)).append("\n");
         }
+
+        builder.append("\n반응 품질 참고\n");
+        builder.append("- 채팅 참여율: 라이브 채팅 데이터 연결 전 단계\n");
+        builder.append("- 좋아요 반응: ").append(reactionQualityText(ownVideo, competitorVideo, report.competitorShortLabel)).append("\n");
 
         builder.append("\n개선 팁 (1위 따라잡기 전략)\n");
         builder.append(report.priorities).append("\n\n");
@@ -535,34 +549,25 @@ final class ComparisonAnalyzer {
     }
 
     private static String categoryReason(String label) {
-        if (label.startsWith("제목")) return "검색 결과에서 가장 먼저 보이는 신호라 키워드 위치와 클릭 이유가 순위 진입에 중요합니다.";
-        if (label.startsWith("썸네일")) return "모바일 검색에서는 썸네일이 클릭 여부를 크게 좌우하지만, 현재는 API로 확인 가능한 기본 신호만 봅니다.";
-        if (label.startsWith("메타")) return "설명 앞부분과 해시태그는 YouTube가 방송 내용을 이해하는 보조 신호입니다.";
-        if (label.startsWith("라이브")) return "지금 켜져 있는 방송의 시청자/조회수 신호가 강하면 노필터 상위 라이브와의 격차가 줄어듭니다.";
-        if (label.startsWith("채널")) return "같은 키워드라도 채널 체급과 구독자 대비 반응이 높으면 신뢰 신호가 좋아집니다.";
-        if (label.startsWith("시청자")) return "좋아요와 댓글은 방송 반응이 살아 있는지 보여주는 공개 신호입니다.";
-        return "정해진 시간대와 반복 방송 패턴은 장기적으로 검색/구독자 재방문에 도움이 됩니다.";
+        if (label.startsWith("트래픽")) return "현재 켜져 있는 방송의 시청자 규모와 순위 접근도가 채널 비교의 가장 큰 축입니다.";
+        if (label.startsWith("채널")) return "같은 키워드라도 채널 체급과 운영 기반이 높으면 경쟁력이 안정적으로 쌓입니다.";
+        if (label.startsWith("기본")) return "제목, 설명, 썸네일은 YouTube와 시청자가 방송 내용을 빠르게 이해하는 기본 신호입니다.";
+        return "반응 품질은 총점과 분리해서 다음 방송 운영 참고로만 봅니다.";
     }
 
     private static String categoryAction(String label, String keyword) {
         String cleanKeyword = keyword == null || keyword.trim().length() == 0 ? "핵심 키워드" : keyword.trim();
-        if (label.startsWith("제목")) return "제목 앞 20자 안에 '" + cleanKeyword + "'와 오늘 방송의 차별점을 넣으세요.";
-        if (label.startsWith("썸네일")) return "모바일에서 한눈에 보이는 큰 글자 3~5단어, 상품/얼굴/핵심 장면을 분명히 확인하세요.";
-        if (label.startsWith("메타")) return "설명 첫 2줄에 '" + cleanKeyword + "', 오늘 다룰 내용, 참여 이유를 넣고 해시태그 3~5개로 정리하세요.";
-        if (label.startsWith("라이브")) return "방송 초반 10분에 질문, 이벤트, 고정댓글로 좋아요/채팅/체류를 먼저 끌어올리세요.";
+        if (label.startsWith("트래픽")) return "방송 시작 직후 유입 동선과 고정 멘트로 시청 이유를 분명히 제시하세요.";
         if (label.startsWith("채널")) return "같은 키워드 방송을 반복 편성하고, 다음 방송 예고와 구독 이유를 고정 멘트로 넣으세요.";
-        if (label.startsWith("시청자")) return "좋아요와 댓글을 요청하는 문장을 방송 화면/고정댓글/진행 멘트에 넣으세요.";
-        return "가능하면 같은 요일과 비슷한 시간대에 반복 방송해 재방문 패턴을 만드세요.";
+        if (label.startsWith("기본")) return "제목 앞 20자와 설명 첫 2줄에 '" + cleanKeyword + "', 오늘 다룰 내용, 참여 이유를 넣으세요.";
+        return "채팅 참여율과 좋아요 반응은 점수와 분리해 다음 방송 운영에만 참고하세요.";
     }
 
     private static String displayLabel(String label) {
-        if (label.startsWith("라이브")) return "시청자 수 (초반 트래픽)";
-        if (label.startsWith("채널")) return "채널 SEO 및 (구독자 규모·운영 기간)";
-        if (label.startsWith("메타")) return "검색 노출 (메타·키워드)";
-        if (label.startsWith("제목")) return "제목최적화 (검색 노출력)";
-        if (label.startsWith("썸네일")) return "썸네일 제목과일치 (클릭 유도)";
-        if (label.startsWith("시청자")) return "시청자 참여 (댓글·좋아요)";
-        return "방송 시간대 (재방문율)";
+        if (label.startsWith("트래픽")) return ComparisonCategory.TRAFFIC_MASS.label + " (" + ComparisonCategory.TRAFFIC_MASS.weightLabel + ")";
+        if (label.startsWith("채널")) return ComparisonCategory.CHANNEL_INFLUENCE.label + " (" + ComparisonCategory.CHANNEL_INFLUENCE.weightLabel + ")";
+        if (label.startsWith("기본")) return ComparisonCategory.BASIC_OPTIMIZATION.label + " (" + ComparisonCategory.BASIC_OPTIMIZATION.weightLabel + ")";
+        return ComparisonCategory.REACTION_QUALITY.label + " (" + ComparisonCategory.REACTION_QUALITY.weightLabel + ")";
     }
 
     private static String statusText(int competitorMinusOwn) {
@@ -573,26 +578,16 @@ final class ComparisonAnalyzer {
     }
 
     private static String categoryEvidence(String label, String keyword, VideoInfo ownVideo, VideoInfo competitorVideo, ChannelStats ownStats, ChannelStats competitorStats) {
-        if (label.startsWith("제목")) {
-            return "내 제목 " + titleFacts(ownVideo.title, keyword) + " / 1위 제목 " + titleFacts(competitorVideo.title, keyword);
-        }
-        if (label.startsWith("썸네일")) {
-            return "내 썸네일 " + thumbnailFacts(ownVideo.thumbnail) + " / 1위 썸네일 " + thumbnailFacts(competitorVideo.thumbnail);
-        }
-        if (label.startsWith("메타")) {
-            return "내 설명 " + metadataFacts(ownVideo.description, ownVideo.tagCount, keyword) + " / 1위 설명 " + metadataFacts(competitorVideo.description, competitorVideo.tagCount, keyword);
-        }
-        if (label.startsWith("라이브")) {
-            return "내 방송 " + liveFacts(ownVideo, ownStats) + " / 1위 방송 " + liveFacts(competitorVideo, competitorStats);
+        if (label.startsWith("트래픽")) {
+            return "내 방송 " + trafficFacts(ownVideo, ownStats) + " / 1위 방송 " + trafficFacts(competitorVideo, competitorStats);
         }
         if (label.startsWith("채널")) {
-            return "내 채널 구독자 " + numberText(ownStats.subscriberCount) + ", 구독자 대비 반응 " + ccvRateText(ownVideo.currentViewers, ownStats.subscriberCount)
-                + " / 1위 구독자 " + numberText(competitorStats.subscriberCount) + ", 구독자 대비 반응 " + ccvRateText(competitorVideo.currentViewers, competitorStats.subscriberCount);
+            return "내 채널 " + channelFacts(ownStats) + " / 1위 채널 " + channelFacts(competitorStats);
         }
-        if (label.startsWith("시청자")) {
-            return "내 반응 " + engagementFacts(ownVideo) + " / 1위 반응 " + engagementFacts(competitorVideo);
+        if (label.startsWith("기본")) {
+            return "내 기본 신호 " + basicFacts(ownVideo, keyword) + " / 1위 기본 신호 " + basicFacts(competitorVideo, keyword);
         }
-        return "이번 모바일 버전은 반복 방송 시간대 상세 분석 전 단계라 기본값으로 비교했습니다.";
+        return reactionQualityText(ownVideo, competitorVideo, "1위");
     }
 
     private static String titleFacts(String title, String keyword) {
@@ -630,8 +625,20 @@ final class ComparisonAnalyzer {
         return "첫 100자 키워드 " + (hasKeyword ? "있음" : "부족") + ", 설명 " + desc.length() + "자, 해시태그 " + hashtags + "개, 태그 " + tagCount + "개";
     }
 
-    private static String liveFacts(VideoInfo video, ChannelStats stats) {
-        return metricText(video) + ", 구독자 대비 현재 반응 " + ccvRateText(video.currentViewers, stats.subscriberCount);
+    private static String basicFacts(VideoInfo video, String keyword) {
+        return titleFacts(video.title, keyword) + ", " + metadataFacts(video.description, video.tagCount, keyword)
+            + ", 썸네일 " + thumbnailFacts(video.thumbnail);
+    }
+
+    private static String trafficFacts(VideoInfo video, ChannelStats stats) {
+        return metricText(video) + ", 구독자 대비 현재 시청자 효율 "
+            + ccvRateText(video.currentViewers, stats == null ? null : stats.subscriberCount);
+    }
+
+    private static String channelFacts(ChannelStats stats) {
+        return "구독자 " + numberText(stats == null ? null : stats.subscriberCount)
+            + ", 누적 조회 " + numberText(stats == null ? null : stats.viewCount)
+            + ", 영상 수 " + numberText(stats == null ? null : stats.videoCount);
     }
 
     private static String ccvRateText(Long currentViewers, Long subscribers) {
@@ -641,7 +648,7 @@ final class ComparisonAnalyzer {
     }
 
     private static String engagementFacts(VideoInfo video) {
-        return "좋아요율 " + ratioText(video.likeCount, video.viewCount) + ", 댓글률 " + ratioText(video.commentCount, video.viewCount);
+        return "좋아요 반응 " + ratioText(video.likeCount, video.viewCount);
     }
 
     private static String ratioText(Long numerator, Long denominator) {

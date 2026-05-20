@@ -65,7 +65,6 @@ namespace LiveHelperWindowsObsRank
         public int TagCount;
         public long? ViewCount;
         public long? LikeCount;
-        public long? CommentCount;
         public long? CurrentViewers;
     }
 
@@ -74,6 +73,45 @@ namespace LiveHelperWindowsObsRank
         public string ChannelId = "";
         public string ChannelTitle = "";
         public long? SubscriberCount;
+        public long? ViewCount;
+        public long? VideoCount;
+    }
+
+    internal sealed class ComparisonCategory
+    {
+        public const string TrafficMassId = "traffic_mass";
+        public const string ChannelInfluenceId = "channel_influence";
+        public const string BasicOptimizationId = "basic_optimization";
+        public const string ReactionQualityId = "reaction_quality";
+
+        public static readonly ComparisonCategory TrafficMass =
+            new ComparisonCategory(TrafficMassId, "트래픽 질량", "60점 묶음", true);
+        public static readonly ComparisonCategory ChannelInfluence =
+            new ComparisonCategory(ChannelInfluenceId, "채널 영향", "30점 묶음", true);
+        public static readonly ComparisonCategory BasicOptimization =
+            new ComparisonCategory(BasicOptimizationId, "기본 최적화", "10점 묶음", true);
+        public static readonly ComparisonCategory ReactionQuality =
+            new ComparisonCategory(ReactionQualityId, "반응 품질", "점수 분리", false);
+
+        public static readonly ComparisonCategory[] ScoreCategories = new ComparisonCategory[]
+        {
+            TrafficMass,
+            ChannelInfluence,
+            BasicOptimization
+        };
+
+        public readonly string Id;
+        public readonly string Label;
+        public readonly string WeightLabel;
+        public readonly bool Scored;
+
+        private ComparisonCategory(string id, string label, string weightLabel, bool scored)
+        {
+            Id = id;
+            Label = label;
+            WeightLabel = weightLabel;
+            Scored = scored;
+        }
     }
 
     internal static class ComparisonAnalyzer
@@ -117,36 +155,52 @@ namespace LiveHelperWindowsObsRank
             int competitorThumb = ThumbnailScore(competitorVideo.Thumbnail);
             int ownMeta = MetadataScore(ownVideo.Description, ownVideo.TagCount, report.Keyword);
             int competitorMeta = MetadataScore(competitorVideo.Description, competitorVideo.TagCount, report.Keyword);
-            int[] currentPair = RelativePair(ownVideo.CurrentViewers ?? ownVideo.ViewCount, competitorVideo.CurrentViewers ?? competitorVideo.ViewCount);
+            int[] currentPair = RelativePair(ownVideo.CurrentViewers, competitorVideo.CurrentViewers);
             int[] subscriberPair = RelativePair(ownStats.SubscriberCount, competitorStats.SubscriberCount);
-            int ownAuthority = Average(new int[] { subscriberPair[0], CcvRateScore(ownVideo.CurrentViewers, ownStats.SubscriberCount) });
-            int competitorAuthority = Average(new int[] { subscriberPair[1], CcvRateScore(competitorVideo.CurrentViewers, competitorStats.SubscriberCount) });
-            int ownEngagement = EngagementScore(ownVideo);
-            int competitorEngagement = EngagementScore(competitorVideo);
-            int ownPublishing = 50;
-            int competitorPublishing = 50;
+            int[] channelViewPair = RelativePair(ownStats.ViewCount, competitorStats.ViewCount);
+            int[] channelVideoPair = RelativePair(ownStats.VideoCount, competitorStats.VideoCount);
+            int ownTrafficMass = WeightedTotal(new int[] {
+                currentPair[0],
+                RankAccessScore(ownNoFilterRank),
+                CcvRateScore(ownVideo.CurrentViewers, ownStats.SubscriberCount)
+            }, new int[] { 40, 10, 10 });
+            int competitorTrafficMass = WeightedTotal(new int[] {
+                currentPair[1],
+                RankAccessScore(competitorNoFilterRank),
+                CcvRateScore(competitorVideo.CurrentViewers, competitorStats.SubscriberCount)
+            }, new int[] { 40, 10, 10 });
+            int ownChannelInfluence = WeightedTotal(new int[] {
+                subscriberPair[0],
+                Average(new int[] { channelViewPair[0], channelVideoPair[0] }),
+                ChannelInfoScore(ownStats)
+            }, new int[] { 15, 10, 5 });
+            int competitorChannelInfluence = WeightedTotal(new int[] {
+                subscriberPair[1],
+                Average(new int[] { channelViewPair[1], channelVideoPair[1] }),
+                ChannelInfoScore(competitorStats)
+            }, new int[] { 15, 10, 5 });
+            int ownBasicOptimization = WeightedTotal(new int[] { ownTitle, ownMeta, ownThumb }, new int[] { 4, 3, 3 });
+            int competitorBasicOptimization = WeightedTotal(new int[] { competitorTitle, competitorMeta, competitorThumb }, new int[] { 4, 3, 3 });
             string[] labels = new string[] {
-                "제목 최적화", "썸네일 기본 평가", "메타데이터", "라이브 현재 성과", "채널 신뢰도", "시청자 반응", "발행 전략"
+                ComparisonCategory.TrafficMass.Label,
+                ComparisonCategory.ChannelInfluence.Label,
+                ComparisonCategory.BasicOptimization.Label
             };
             int[] ownScores = new int[] {
-                ownTitle, ownThumb, ownMeta, currentPair[0], ownAuthority, ownEngagement, ownPublishing
+                ownTrafficMass, ownChannelInfluence, ownBasicOptimization
             };
             int[] competitorScores = new int[] {
-                competitorTitle, competitorThumb, competitorMeta, currentPair[1], competitorAuthority, competitorEngagement, competitorPublishing
+                competitorTrafficMass, competitorChannelInfluence, competitorBasicOptimization
             };
             int[] gaps = new int[] {
-                competitorTitle - ownTitle,
-                competitorThumb - ownThumb,
-                competitorMeta - ownMeta,
-                currentPair[1] - currentPair[0],
-                competitorAuthority - ownAuthority,
-                competitorEngagement - ownEngagement,
-                competitorPublishing - ownPublishing
+                competitorTrafficMass - ownTrafficMass,
+                competitorChannelInfluence - ownChannelInfluence,
+                competitorBasicOptimization - ownBasicOptimization
             };
-            int[] weights = new int[] { 15, 10, 10, 25, 15, 15, 10 };
+            int[] weights = new int[] { 60, 30, 10 };
 
-            report.OwnScore = WeightedTotal(new int[] { ownTitle, ownThumb, ownMeta, currentPair[0], ownAuthority, ownEngagement, ownPublishing });
-            report.CompetitorScore = WeightedTotal(new int[] { competitorTitle, competitorThumb, competitorMeta, currentPair[1], competitorAuthority, competitorEngagement, competitorPublishing });
+            report.OwnScore = WeightedTotal(ownScores, weights);
+            report.CompetitorScore = WeightedTotal(competitorScores, weights);
             report.OwnGrade = Grade(report.OwnScore);
             report.CompetitorGrade = Grade(report.CompetitorScore);
             report.CompetitorChannelTitle = competitorVideo.ChannelTitle;
@@ -247,22 +301,24 @@ namespace LiveHelperWindowsObsRank
             return 30;
         }
 
-        private static int EngagementScore(VideoInfo video)
+        private static int RankAccessScore(int rank)
         {
-            int likeScore = RatioScore(video.LikeCount, video.ViewCount, new double[] { 0.05, 0.03, 0.01 }, new int[] { 100, 80, 60, 30 });
-            int commentScore = RatioScore(video.CommentCount, video.ViewCount, new double[] { 0.01, 0.005, 0.001 }, new int[] { 100, 75, 50, 25 });
-            return WeightedTotal(new int[] { likeScore, commentScore }, new int[] { 40, 30 });
+            if (rank <= 0) return 0;
+            if (rank == 1) return 100;
+            if (rank <= 3) return 80;
+            if (rank <= 5) return 60;
+            if (rank <= 10) return 40;
+            if (rank <= 20) return 20;
+            return 0;
         }
 
-        private static int RatioScore(long? numerator, long? denominator, double[] thresholds, int[] scores)
+        private static int ChannelInfoScore(ChannelStats stats)
         {
-            if (!numerator.HasValue || !denominator.HasValue || denominator.Value <= 0) return 0;
-            double ratio = numerator.Value / (double)denominator.Value;
-            for (int index = 0; index < thresholds.Length; index += 1)
-            {
-                if (ratio >= thresholds[index]) return scores[index];
-            }
-            return scores[scores.Length - 1];
+            int score = 0;
+            if (stats != null && stats.SubscriberCount.HasValue) score += 40;
+            if (stats != null && stats.ViewCount.HasValue) score += 30;
+            if (stats != null && stats.VideoCount.HasValue) score += 30;
+            return score;
         }
 
         private static int Average(int[] values)
@@ -325,7 +381,7 @@ namespace LiveHelperWindowsObsRank
                     .Append("   할 일: ").Append(CategoryAction(labels[best], keyword));
             }
             return builder.Length == 0
-                ? "큰 약점이 크게 잡히지 않았습니다.\r\n현재 점수표를 유지하면서 제목, 설명, 시청자 반응을 계속 점검하세요."
+                ? "큰 약점이 크게 잡히지 않았습니다.\r\n트래픽 질량, 채널 영향, 기본 최적화를 같은 구조로 계속 점검하세요."
                 : builder.ToString();
         }
 
@@ -412,13 +468,10 @@ namespace LiveHelperWindowsObsRank
             builder.AppendLine("- 이 리포트는 보장이 아니라 공개 API 기준 진단입니다.");
             builder.AppendLine();
             builder.AppendLine("이번에 비교한 것");
-            builder.AppendLine("1. 제목: 키워드 포함, 앞부분 배치, 길이, 클릭 이유");
-            builder.AppendLine("2. 썸네일: API로 확인 가능한 썸네일 존재와 기본 품질 신호");
-            builder.AppendLine("3. 메타데이터: 설명 첫 부분, 설명 길이, 해시태그, 태그 수");
-            builder.AppendLine("4. 라이브 현재 성과: 현재 시청자 또는 공개 조회수 상대 비교");
-            builder.AppendLine("5. 채널 신뢰도: 구독자 수와 구독자 대비 현재 반응");
-            builder.AppendLine("6. 시청자 반응: 좋아요/댓글 비율");
-            builder.AppendLine("7. 발행 전략: 이번 Windows 소스 버전은 기본값으로 두고 다음 고도화 대상");
+            builder.AppendLine("1. 트래픽 질량 (60점 묶음): 현재 시청자, 노필터 순위 접근도, 구독자 대비 현재 시청자 효율");
+            builder.AppendLine("2. 채널 영향 (30점 묶음): 구독자 규모, 채널 누적 조회/영상 기반, 채널 정보 확인성");
+            builder.AppendLine("3. 기본 최적화 (10점 묶음): 제목, 설명, 썸네일 기본 신호");
+            builder.AppendLine("4. 반응 품질: 채팅 참여율과 좋아요 반응은 점수와 분리해 참고");
             builder.AppendLine();
             builder.AppendLine("실제 비교 대상");
             builder.AppendLine("- 내 제목: " + Safe(ownVideo.Title));
@@ -438,6 +491,10 @@ namespace LiveHelperWindowsObsRank
                 builder.AppendLine("   의미: " + CategoryReason(labels[index]));
                 builder.AppendLine("   할 일: " + CategoryAction(labels[index], report.Keyword));
             }
+            builder.AppendLine();
+            builder.AppendLine("반응 품질 참고");
+            builder.AppendLine("- 채팅 참여율: 라이브 채팅 데이터 연결 전 단계");
+            builder.AppendLine("- 좋아요 반응: " + ReactionQualityText(ownVideo, competitorVideo, report.CompetitorShortLabel));
             builder.AppendLine();
             builder.AppendLine("오늘 바로 수정할 순서");
             builder.AppendLine(report.Priorities);
@@ -504,36 +561,27 @@ namespace LiveHelperWindowsObsRank
 
         private static string CategoryReason(string label)
         {
-            if (label.StartsWith("제목")) return "검색 결과에서 가장 먼저 보이는 신호라 키워드 위치와 클릭 이유가 순위 진입에 중요합니다.";
-            if (label.StartsWith("썸네일")) return "모바일 검색에서는 썸네일이 클릭 여부를 크게 좌우하지만, 현재는 API로 확인 가능한 기본 신호만 봅니다.";
-            if (label.StartsWith("메타")) return "설명 앞부분과 해시태그는 YouTube가 방송 내용을 이해하는 보조 신호입니다.";
-            if (label.StartsWith("라이브")) return "지금 켜져 있는 방송의 시청자/조회수 신호가 강하면 노필터 상위 라이브와의 격차가 줄어듭니다.";
-            if (label.StartsWith("채널")) return "같은 키워드라도 채널 체급과 구독자 대비 반응이 높으면 신뢰 신호가 좋아집니다.";
-            if (label.StartsWith("시청자")) return "좋아요와 댓글은 방송 반응이 살아 있는지 보여주는 공개 신호입니다.";
-            return "정해진 시간대와 반복 방송 패턴은 장기적으로 검색/구독자 재방문에 도움이 됩니다.";
+            if (label.StartsWith("트래픽")) return "현재 켜져 있는 방송의 시청자 규모와 순위 접근도가 채널 비교의 가장 큰 축입니다.";
+            if (label.StartsWith("채널")) return "같은 키워드라도 채널 체급과 운영 기반이 높으면 경쟁력이 안정적으로 쌓입니다.";
+            if (label.StartsWith("기본")) return "제목, 설명, 썸네일은 YouTube와 시청자가 방송 내용을 빠르게 이해하는 기본 신호입니다.";
+            return "반응 품질은 총점과 분리해서 다음 방송 운영 참고로만 봅니다.";
         }
 
         private static string CategoryAction(string label, string keyword)
         {
             string cleanKeyword = string.IsNullOrWhiteSpace(keyword) ? "핵심 키워드" : keyword.Trim();
-            if (label.StartsWith("제목")) return "제목 앞 20자 안에 '" + cleanKeyword + "'와 오늘 방송의 차별점을 넣으세요.";
-            if (label.StartsWith("썸네일")) return "모바일에서 한눈에 보이는 큰 글자 3~5단어, 상품/얼굴/핵심 장면을 분명히 확인하세요.";
-            if (label.StartsWith("메타")) return "설명 첫 2줄에 '" + cleanKeyword + "', 오늘 다룰 내용, 참여 이유를 넣고 해시태그 3~5개로 정리하세요.";
-            if (label.StartsWith("라이브")) return "방송 초반 10분에 질문, 이벤트, 고정댓글로 좋아요/채팅/체류를 먼저 끌어올리세요.";
+            if (label.StartsWith("트래픽")) return "방송 시작 직후 유입 동선과 고정 멘트로 시청 이유를 분명히 제시하세요.";
             if (label.StartsWith("채널")) return "같은 키워드 방송을 반복 편성하고, 다음 방송 예고와 구독 이유를 고정 멘트로 넣으세요.";
-            if (label.StartsWith("시청자")) return "좋아요와 댓글을 요청하는 문장을 방송 화면/고정댓글/진행 멘트에 넣으세요.";
-            return "가능하면 같은 요일과 비슷한 시간대에 반복 방송해 재방문 패턴을 만드세요.";
+            if (label.StartsWith("기본")) return "제목 앞 20자와 설명 첫 2줄에 '" + cleanKeyword + "', 오늘 다룰 내용, 참여 이유를 넣으세요.";
+            return "채팅 참여율과 좋아요 반응은 점수와 분리해 다음 방송 운영에만 참고하세요.";
         }
 
         private static string DisplayLabel(string label)
         {
-            if (label.StartsWith("제목")) return "제목 최적화(노출력)";
-            if (label.StartsWith("썸네일")) return "썸네일(클릭력)";
-            if (label.StartsWith("메타")) return "메타데이터(검색 이해도)";
-            if (label.StartsWith("라이브")) return "라이브 현재 성과(초반 화력)";
-            if (label.StartsWith("채널")) return "채널 신뢰도";
-            if (label.StartsWith("시청자")) return "시청자 반응(참여도)";
-            return "발행 전략(재방문력)";
+            if (label.StartsWith("트래픽")) return ComparisonCategory.TrafficMass.Label + " (" + ComparisonCategory.TrafficMass.WeightLabel + ")";
+            if (label.StartsWith("채널")) return ComparisonCategory.ChannelInfluence.Label + " (" + ComparisonCategory.ChannelInfluence.WeightLabel + ")";
+            if (label.StartsWith("기본")) return ComparisonCategory.BasicOptimization.Label + " (" + ComparisonCategory.BasicOptimization.WeightLabel + ")";
+            return ComparisonCategory.ReactionQuality.Label + " (" + ComparisonCategory.ReactionQuality.WeightLabel + ")";
         }
 
         private static string StatusText(int competitorMinusOwn)
@@ -546,13 +594,10 @@ namespace LiveHelperWindowsObsRank
 
         private static string CategoryEvidence(string label, string keyword, VideoInfo ownVideo, VideoInfo competitorVideo, ChannelStats ownStats, ChannelStats competitorStats, string competitorLabel)
         {
-            if (label.StartsWith("제목")) return "내 제목 " + TitleFacts(ownVideo.Title, keyword) + " / " + competitorLabel + " 제목 " + TitleFacts(competitorVideo.Title, keyword);
-            if (label.StartsWith("썸네일")) return "내 썸네일 " + ThumbnailFacts(ownVideo.Thumbnail) + " / " + competitorLabel + " 썸네일 " + ThumbnailFacts(competitorVideo.Thumbnail);
-            if (label.StartsWith("메타")) return "내 설명 " + MetadataFacts(ownVideo.Description, ownVideo.TagCount, keyword) + " / " + competitorLabel + " 설명 " + MetadataFacts(competitorVideo.Description, competitorVideo.TagCount, keyword);
-            if (label.StartsWith("라이브")) return "내 방송 " + MetricText(ownVideo) + " / " + competitorLabel + " 방송 " + MetricText(competitorVideo);
-            if (label.StartsWith("채널")) return "내 구독자 " + NumberText(ownStats.SubscriberCount) + " / " + competitorLabel + " 구독자 " + NumberText(competitorStats.SubscriberCount);
-            if (label.StartsWith("시청자")) return "내 반응 " + EngagementFacts(ownVideo) + " / " + competitorLabel + " 반응 " + EngagementFacts(competitorVideo);
-            return "이번 Windows 소스 버전은 반복 방송 시간대 상세 분석 전 단계라 기본값으로 비교했습니다.";
+            if (label.StartsWith("트래픽")) return "내 방송 " + TrafficFacts(ownVideo, ownStats) + " / " + competitorLabel + " 방송 " + TrafficFacts(competitorVideo, competitorStats);
+            if (label.StartsWith("채널")) return "내 채널 " + ChannelFacts(ownStats) + " / " + competitorLabel + " 채널 " + ChannelFacts(competitorStats);
+            if (label.StartsWith("기본")) return "내 기본 신호 " + BasicFacts(ownVideo, keyword) + " / " + competitorLabel + " 기본 신호 " + BasicFacts(competitorVideo, keyword);
+            return ReactionQualityText(ownVideo, competitorVideo, competitorLabel);
         }
 
         private static string TitleFacts(string title, string keyword)
@@ -582,9 +627,35 @@ namespace LiveHelperWindowsObsRank
             return "첫 100자 키워드 " + (hasKeyword ? "있음" : "부족") + ", 설명 " + desc.Length + "자, 해시태그 " + hashtags + "개, 태그 " + tagCount + "개";
         }
 
-        private static string EngagementFacts(VideoInfo video)
+        private static string BasicFacts(VideoInfo video, string keyword)
         {
-            return "좋아요율 " + RatioText(video.LikeCount, video.ViewCount) + ", 댓글률 " + RatioText(video.CommentCount, video.ViewCount);
+            return TitleFacts(video.Title, keyword) + ", " + MetadataFacts(video.Description, video.TagCount, keyword)
+                + ", 썸네일 " + ThumbnailFacts(video.Thumbnail);
+        }
+
+        private static string TrafficFacts(VideoInfo video, ChannelStats stats)
+        {
+            return MetricText(video) + ", 구독자 대비 현재 시청자 효율 " + CcvRateText(video.CurrentViewers, stats == null ? null : stats.SubscriberCount);
+        }
+
+        private static string ChannelFacts(ChannelStats stats)
+        {
+            return "구독자 " + NumberText(stats == null ? null : stats.SubscriberCount)
+                + ", 누적 조회 " + NumberText(stats == null ? null : stats.ViewCount)
+                + ", 영상 수 " + NumberText(stats == null ? null : stats.VideoCount);
+        }
+
+        private static string ReactionQualityText(VideoInfo ownVideo, VideoInfo competitorVideo, string competitorLabel)
+        {
+            return "내 좋아요 반응 " + RatioText(ownVideo.LikeCount, ownVideo.ViewCount)
+                + " / " + competitorLabel + " 좋아요 반응 " + RatioText(competitorVideo.LikeCount, competitorVideo.ViewCount);
+        }
+
+        private static string CcvRateText(long? currentViewers, long? subscribers)
+        {
+            if (!currentViewers.HasValue || !subscribers.HasValue || subscribers.Value <= 0) return "확인 불가";
+            double percent = currentViewers.Value * 100.0 / subscribers.Value;
+            return percent.ToString("0.00") + "%";
         }
 
         private static string RatioText(long? numerator, long? denominator)

@@ -228,7 +228,7 @@ namespace LiveHelperWindowsObsRank
             {
                 {"part", "snippet,statistics,liveStreamingDetails"},
                 {"id", ids.ToString()},
-                {"fields", "items(id,snippet(title,description,tags,channelId,channelTitle,liveBroadcastContent,thumbnails),statistics(viewCount,likeCount,commentCount),liveStreamingDetails(concurrentViewers,actualStartTime))"}
+                {"fields", "items(id,snippet(title,description,tags,channelId,channelTitle,liveBroadcastContent,thumbnails),statistics(viewCount,likeCount),liveStreamingDetails(concurrentViewers,actualStartTime))"}
             }));
             foreach (Dictionary<string, object> item in Items(payload))
             {
@@ -265,6 +265,8 @@ namespace LiveHelperWindowsObsRank
                 info.ChannelId = Str(item, "id");
                 info.ChannelTitle = Str(snippet, "title");
                 info.SubscriberCount = string.Equals(Str(stats, "hiddenSubscriberCount"), "true", StringComparison.OrdinalIgnoreCase) ? null : LongValue(stats, "subscriberCount");
+                info.ViewCount = LongValue(stats, "viewCount");
+                info.VideoCount = LongValue(stats, "videoCount");
                 map[info.ChannelId] = info;
             }
             return map;
@@ -298,7 +300,6 @@ namespace LiveHelperWindowsObsRank
             info.TagCount = CountArray(snippet, "tags");
             info.ViewCount = LongValue(stats, "viewCount");
             info.LikeCount = LongValue(stats, "likeCount");
-            info.CommentCount = LongValue(stats, "commentCount");
             info.CurrentViewers = LongValue(live, "concurrentViewers");
             return info;
         }

@@ -491,28 +491,26 @@ public final class MainActivity extends Activity implements SharedPreferences.On
         if (summary.length() > 0) {
             builder.append("- ").append(summary).append("\n");
         }
-        builder.append("- 위 점수는 공개 API로 확인 가능한 시청자 수, 채널 SEO, 검색 노출, 제목, 썸네일, 시청자 참여, 방송 시간대를 비교한 값입니다.\n");
+        builder.append("- 위 점수는 공개 API로 확인 가능한 트래픽 질량, 채널 영향, 기본 최적화를 비교한 값입니다.\n");
         builder.append("- 점수 자체보다 중요한 것은 아래 개선 팁입니다. 낮은 항목부터 고치면 같은 키워드에서 경쟁력을 높일 수 있습니다.\n\n");
 
         builder.append("무엇을 비교했나\n");
-        builder.append("1. 시청자 수 (초반 트래픽): 현재 시청자 또는 공개 조회수 반응\n");
-        builder.append("2. 채널 SEO 및 구독자 규모: 채널 체급과 운영 신뢰 신호\n");
-        builder.append("3. 검색 노출 (메타·키워드): 설명 첫 2줄, 해시태그, 태그 수\n");
-        builder.append("4. 제목최적화 (검색 노출력): '").append(keyword).append("' 포함 여부, 앞부분 배치, 클릭 이유\n");
-        builder.append("5. 썸네일 제목과일치: 모바일에서 보이는 기본 썸네일 신호\n");
-        builder.append("6. 시청자 참여 (댓글·좋아요): 좋아요와 댓글 비율\n\n");
+        builder.append("1. 트래픽 질량 (60점 묶음): 현재 시청자, 노필터 순위 접근도, 구독자 대비 현재 시청자 효율\n");
+        builder.append("2. 채널 영향 (30점 묶음): 구독자 규모, 채널 누적 조회/영상 기반, 채널 정보 확인성\n");
+        builder.append("3. 기본 최적화 (10점 묶음): 제목, 설명, 썸네일 기본 신호\n");
+        builder.append("4. 반응 품질: 채팅 참여율과 좋아요 반응은 점수와 분리해 참고\n\n");
 
         builder.append("왜 이게 필요한가\n");
         builder.append("- 사용자는 점수만으로 행동할 수 없습니다. 이 화면은 어떤 항목이 1위보다 약한지 보고 바로 수정하기 위한 화면입니다.\n");
-        builder.append("- 특히 '시청자 수'가 1순위라면 방송 초반 트래픽이 약하다는 뜻입니다. 질문, 이벤트, 고정댓글, 좋아요 요청으로 초반 10분 반응을 끌어올려야 합니다.\n");
-        builder.append("- '검색 노출'이나 '제목최적화'가 약하면 제목·태그·설명에 키워드와 오늘 방송의 차별점을 더 분명히 넣어야 합니다.\n\n");
+        builder.append("- 특히 트래픽 질량이 낮으면 방송 초반 유입 동선과 시청 이유 제시를 먼저 점검해야 합니다.\n");
+        builder.append("- 기본 최적화가 낮으면 제목·태그·설명에 키워드와 오늘 방송의 차별점을 더 분명히 넣어야 합니다.\n\n");
 
         builder.append("오늘 바로 할 일\n");
-        if (priorities.contains("시청자 수") || priorities.contains("라이브 현재 성과")) {
-            builder.append("1. 방송 시작 직후 고정댓글로 질문 또는 참여 이유를 제시하세요.\n");
-            builder.append("2. 초반 10분 안에 좋아요/댓글/채팅 참여를 직접 요청하세요.\n");
+        if (priorities.contains("트래픽")) {
+            builder.append("1. 방송 시작 직후 질문 또는 참여 이유를 제시하세요.\n");
+            builder.append("2. 초반 10분 안에 채팅 참여와 좋아요 반응을 자연스럽게 유도하세요.\n");
         }
-        if (priorities.contains("제목") || priorities.contains("검색 노출")) {
+        if (priorities.contains("기본") || priorities.contains("제목")) {
             builder.append("3. 제목 앞부분을 '").append(keyword).append(" 라이브 | 오늘 핵심 내용'처럼 키워드 먼저 보이게 바꾸세요.\n");
         }
         builder.append("4. 설명 첫 2줄에 '").append(keyword).append("', 오늘 다룰 내용, 시청자가 얻는 이득을 적으세요.\n\n");

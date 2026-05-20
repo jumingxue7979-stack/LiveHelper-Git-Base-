@@ -69,17 +69,19 @@ public final class ComparisonDashboardView extends View {
         text(canvas, "핵심 진단", 20, 306, 18, Color.rgb(15, 23, 42), true, Paint.Align.LEFT);
         drawDiagnosisCards(canvas, 20, 338);
 
-        text(canvas, "카테고리별 점수", 20, 590, 18, Color.rgb(15, 23, 42), true, Paint.Align.LEFT);
-        text(canvas, "중요도 순", 400, 594, 11, Color.rgb(100, 116, 139), false, Paint.Align.RIGHT);
-        card(canvas, 20, 622, 380, 378, Color.WHITE);
+        text(canvas, "3대 카테고리 점수", 20, 590, 18, Color.rgb(15, 23, 42), true, Paint.Align.LEFT);
+        text(canvas, "3대 구조", 400, 594, 11, Color.rgb(100, 116, 139), false, Paint.Align.RIGHT);
+        card(canvas, 20, 622, 380, 190, Color.WHITE);
         List<Row> rows = data.orderedRows();
-        for (int i = 0; i < rows.size() && i < 7; i += 1) {
+        for (int i = 0; i < rows.size() && i < 3; i += 1) {
             drawCategoryRow(canvas, rows.get(i), i, 640 + i * 51);
         }
 
-        card(canvas, 20, 1020, 380, 86, Color.rgb(239, 246, 255));
-        text(canvas, "참고사항", 36, 1034, 13, Color.rgb(37, 99, 235), true, Paint.Align.LEFT);
-        multiline(canvas, "본 리포트는 공개 API 기준 진단이며, 1위 진입이나 조회수 상승을 보장하지 않습니다. 다음 방송에서 무엇을 고칠지 확인하는 참고 자료입니다.", 36, 1058, 348, 11, Color.rgb(51, 65, 85), 3);
+        drawReactionQuality(canvas, 20, 836);
+
+        card(canvas, 20, 970, 380, 86, Color.rgb(239, 246, 255));
+        text(canvas, "참고사항", 36, 984, 13, Color.rgb(37, 99, 235), true, Paint.Align.LEFT);
+        multiline(canvas, "본 리포트는 공개 API 기준 진단이며, 1위 진입이나 조회수 상승을 보장하지 않습니다. 다음 방송에서 무엇을 고칠지 확인하는 참고 자료입니다.", 36, 1008, 348, 11, Color.rgb(51, 65, 85), 3);
     }
 
     private void drawOwnScoreCard(Canvas canvas, float x, float y, float w) {
@@ -146,6 +148,15 @@ public final class ComparisonDashboardView extends View {
         bar(canvas, 88, y + 24, 112, 8, row.own, Color.rgb(236, 72, 153));
         text(canvas, blank(data.competitorShortLabel, "1위") + " " + row.competitor + "점", 218, y + 17, 10, Color.rgb(100, 116, 139), false, Paint.Align.LEFT);
         bar(canvas, 268, y + 24, 112, 8, row.competitor, Color.rgb(16, 185, 129));
+    }
+
+    private void drawReactionQuality(Canvas canvas, float x, float y) {
+        card(canvas, x, y, 380, 110, Color.WHITE);
+        text(canvas, "반응 품질 참고", x + 16, y + 14, 14, Color.rgb(15, 23, 42), true, Paint.Align.LEFT);
+        String first = data.reactionLines.size() > 0 ? data.reactionLines.get(0) : "채팅 참여율: 라이브 채팅 데이터 연결 전 단계";
+        String second = data.reactionLines.size() > 1 ? data.reactionLines.get(1) : "좋아요 반응: 확인 전";
+        multiline(canvas, first, x + 16, y + 42, 348, 11, Color.rgb(51, 65, 85), 2);
+        multiline(canvas, second, x + 16, y + 74, 348, 11, Color.rgb(51, 65, 85), 2);
     }
 
     private void card(Canvas canvas, float x, float y, float w, float h, int color) {
@@ -227,49 +238,34 @@ public final class ComparisonDashboardView extends View {
     }
 
     private String displayName(String label) {
-        if (label.startsWith("라이브") || label.startsWith("시청자 수")) return "시청자 수 (초반 트래픽)";
-        if (label.startsWith("채널")) return "채널 SEO 및 구독자 규모";
-        if (label.startsWith("메타") || label.startsWith("검색")) return "검색 노출 (메타·키워드)";
-        if (label.startsWith("제목")) return "제목최적화 (검색 노출력)";
-        if (label.startsWith("썸네일")) return "썸네일 제목과일치";
-        if (label.startsWith("시청자") || label.startsWith("반응")) return "시청자 참여 (댓글·좋아요)";
-        return "방송 시간대 (재방문율)";
+        if (label.startsWith("트래픽")) return "트래픽 질량 (60점 묶음)";
+        if (label.startsWith("채널")) return "채널 영향 (30점 묶음)";
+        if (label.startsWith("기본")) return "기본 최적화 (10점 묶음)";
+        return "반응 품질 (점수 분리)";
     }
 
     private String diagnosisTitle(Row row) {
         String label = row.name;
-        if (label.startsWith("라이브") || label.startsWith("시청자 수")) return "시청자 수 부족";
-        if (label.startsWith("채널")) return "채널 신뢰도 부족";
-        if (label.startsWith("메타") || label.startsWith("검색")) return "검색 노출 부족";
-        if (label.startsWith("제목")) return "제목 최적화 부족";
-        if (label.startsWith("썸네일")) return "썸네일 클릭 요소 부족";
-        if (label.startsWith("시청자") || label.startsWith("반응")) return "시청자 참여 부족";
-        return "방송 시간대 보강";
+        if (label.startsWith("트래픽")) return "트래픽 질량 부족";
+        if (label.startsWith("채널")) return "채널 영향 부족";
+        if (label.startsWith("기본")) return "기본 최적화 부족";
+        return "반응 품질 참고";
     }
 
     private String diagnosisText(Row row) {
         int gap = Math.max(0, row.competitor - row.own);
         String competitor = blank(data.competitorShortLabel, "1위");
         String label = row.name;
-        if (label.startsWith("라이브") || label.startsWith("시청자 수")) {
-            return "라이브 초반 트래픽이 " + competitor + " 대비 " + gap + "점 낮음. 방송 시작 직후 실시청자 유입 확보가 필요합니다.";
+        if (label.startsWith("트래픽")) {
+            return "현재 방송 트래픽이 " + competitor + " 대비 " + gap + "점 낮음. 방송 시작 직후 유입 동선 점검이 필요합니다.";
         }
         if (label.startsWith("채널")) {
-            return "채널 SEO 및 구독자 규모·운영 기간이 " + competitor + "보다 " + gap + "점 낮음. 꾸준한 라이브로 채널 최적화가 필요합니다.";
+            return "채널 영향이 " + competitor + "보다 " + gap + "점 낮음. 반복 방송과 다음 방송 예고를 쌓아야 합니다.";
         }
-        if (label.startsWith("메타") || label.startsWith("검색")) {
-            return "메타데이터·키워드 매칭이 " + competitor + "보다 " + gap + "점 낮음. 제목·태그·설명에 [" + blank(data.keyword, "검색 키워드") + "] 관련 검색어 보강이 필요합니다.";
+        if (label.startsWith("기본")) {
+            return "기본 최적화가 " + competitor + "보다 " + gap + "점 낮음. 제목·설명 첫 부분에 [" + blank(data.keyword, "검색 키워드") + "]를 분명히 넣으세요.";
         }
-        if (label.startsWith("제목")) {
-            return "제목 검색 노출력이 " + competitor + "보다 " + gap + "점 낮음. 제목 앞부분에 [" + blank(data.keyword, "검색 키워드") + "]와 방송 내용을 넣으세요.";
-        }
-        if (label.startsWith("썸네일")) {
-            return "썸네일 클릭 유도가 " + competitor + "보다 " + gap + "점 낮음. 제목과 맞는 큰 글자와 핵심 장면을 보여주세요.";
-        }
-        if (label.startsWith("시청자") || label.startsWith("반응")) {
-            return "댓글·좋아요 참여가 " + competitor + "보다 " + gap + "점 낮음. 진행 멘트와 고정댓글로 참여를 요청하세요.";
-        }
-        return "방송 시간대 재방문 신호가 " + competitor + "보다 " + gap + "점 낮음. 같은 요일과 시간대 반복 방송이 필요합니다.";
+        return "채팅 참여율과 좋아요 반응은 총점과 분리해 참고합니다.";
     }
 
     private String blank(String value, String fallback) {
@@ -288,9 +284,11 @@ public final class ComparisonDashboardView extends View {
         String ownGrade = "";
         String competitorGrade = "";
         final List<Row> rows = new ArrayList<>();
+        final List<String> reactionLines = new ArrayList<>();
 
         void parse(String report) {
             rows.clear();
+            reactionLines.clear();
             keyword = "";
             comparisonTitle = "";
             ownChannelTitle = "";
@@ -304,8 +302,13 @@ public final class ComparisonDashboardView extends View {
 
             String[] lines = report.split("\\n");
             Row current = null;
+            boolean inReactionQuality = false;
             for (String raw : lines) {
                 String line = raw.trim();
+                if (line.length() == 0) {
+                    inReactionQuality = false;
+                    continue;
+                }
                 if (line.startsWith("키워드:")) keyword = line.substring(4).trim();
                 if (line.startsWith("내 채널:")) ownChannelTitle = line.substring(5).trim();
                 if (line.contains("내 채널") && line.contains("노필터 라이브") && !line.startsWith("내 채널:")) comparisonTitle = line;
@@ -329,6 +332,15 @@ public final class ComparisonDashboardView extends View {
                     competitorScore = intValue(comp.group(1));
                     competitorGrade = comp.group(2);
                 }
+                if (line.equals("반응 품질 참고")) {
+                    inReactionQuality = true;
+                    current = null;
+                    continue;
+                }
+                if (inReactionQuality && line.startsWith("-")) {
+                    reactionLines.add(line.substring(1).trim());
+                    continue;
+                }
                 Matcher rowStart = Pattern.compile("^\\d+\\.\\s*(.+?)\\s{2,}(핵심 약점|개선 권장|내 강점|동등)").matcher(line);
                 if (rowStart.find()) {
                     current = new Row();
@@ -348,7 +360,7 @@ public final class ComparisonDashboardView extends View {
 
         List<Row> orderedRows() {
             ArrayList<Row> ordered = new ArrayList<>();
-            String[] order = { "traffic", "channel", "search", "title", "thumbnail", "engagement", "schedule" };
+            String[] order = { "traffic", "channel", "basic" };
             for (String key : order) {
                 addFirst(ordered, key);
             }
@@ -379,12 +391,9 @@ public final class ComparisonDashboardView extends View {
         }
 
         private boolean matches(String label, String key) {
-            if ("traffic".equals(key)) return label.startsWith("라이브") || label.startsWith("시청자 수");
+            if ("traffic".equals(key)) return label.startsWith("트래픽") || label.startsWith("라이브") || label.startsWith("시청자 수");
             if ("channel".equals(key)) return label.startsWith("채널");
-            if ("search".equals(key)) return label.startsWith("메타") || label.startsWith("검색");
-            if ("title".equals(key)) return label.startsWith("제목");
-            if ("thumbnail".equals(key)) return label.startsWith("썸네일");
-            if ("engagement".equals(key)) return label.startsWith("시청자 참여") || label.startsWith("반응");
+            if ("basic".equals(key)) return label.startsWith("기본") || label.startsWith("메타") || label.startsWith("검색") || label.startsWith("제목") || label.startsWith("썸네일");
             return label.startsWith("발행") || label.startsWith("방송");
         }
 

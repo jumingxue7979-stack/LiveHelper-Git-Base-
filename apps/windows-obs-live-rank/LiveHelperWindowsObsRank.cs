@@ -843,6 +843,7 @@ namespace LiveHelperWindowsObsRank
             DrawRadar(g);
             DrawCoreDiagnosis(g);
             DrawPriorities(g);
+            DrawReactionQuality(g);
             DrawNotice(g);
         }
 
@@ -899,7 +900,7 @@ namespace LiveHelperWindowsObsRank
 
         private void DrawCategoryComparison(Graphics g)
         {
-            DrawString(g, "카테고리별 점수 비교", sectionFont, ink, new RectangleF(32, 286, 360, 26));
+            DrawString(g, "3대 카테고리 점수 비교", sectionFont, ink, new RectangleF(32, 286, 360, 26));
             Rectangle card = new Rectangle(32, 318, 700, 410);
             DrawCard(g, card, Color.White);
 
@@ -1012,9 +1013,20 @@ namespace LiveHelperWindowsObsRank
             }
         }
 
+        private void DrawReactionQuality(Graphics g)
+        {
+            Rectangle card = new Rectangle(32, 878, 1068, 58);
+            DrawCard(g, card, Color.White);
+            DrawString(g, "반응 품질 참고", bodyBoldFont, ink, new RectangleF(card.X + 18, card.Y + 10, 140, 20));
+            string chat = data.ReactionQuality.Count > 0 ? data.ReactionQuality[0] : "채팅 참여율: 라이브 채팅 데이터 연결 전 단계";
+            string like = data.ReactionQuality.Count > 1 ? data.ReactionQuality[1] : "좋아요 반응: 확인 전";
+            DrawString(g, chat, bodyFont, muted, new RectangleF(card.X + 166, card.Y + 10, card.Width - 190, 20));
+            DrawString(g, like, bodyFont, muted, new RectangleF(card.X + 166, card.Y + 32, card.Width - 190, 18));
+        }
+
         private void DrawNotice(Graphics g)
         {
-            Rectangle notice = new Rectangle(32, 878, 1068, 54);
+            Rectangle notice = new Rectangle(32, 954, 1068, 54);
             DrawCard(g, notice, Color.FromArgb(239, 246, 255));
             DrawString(g, "참고사항", bodyBoldFont, Color.FromArgb(29, 78, 216), new RectangleF(notice.X + 18, notice.Y + 10, 110, 20));
             DrawString(g, "LiveRank는 공개 데이터와 일반 진단 기준으로 비교 분석을 제공합니다. 1등 진입이나 조회수 상승을 보장하지 않습니다.", bodyFont, muted, new RectangleF(notice.X + 128, notice.Y + 10, notice.Width - 148, 22));
@@ -1170,13 +1182,10 @@ namespace LiveHelperWindowsObsRank
 
         private string ShortLabel(string label)
         {
-            if (label.Contains("제목")) return "제목";
-            if (label.Contains("썸네일")) return "썸네일";
-            if (label.Contains("메타")) return "메타";
-            if (label.Contains("라이브")) return "라이브";
-            if (label.Contains("채널")) return "신뢰도";
-            if (label.Contains("시청자")) return "반응";
-            return "발행";
+            if (label.Contains("트래픽")) return "트래픽";
+            if (label.Contains("채널")) return "채널";
+            if (label.Contains("기본")) return "최적화";
+            return "반응";
         }
 
         private string Blank(string value, string fallback)
@@ -1203,6 +1212,7 @@ namespace LiveHelperWindowsObsRank
         public string InterpretationNote = "";
         public readonly List<CategoryVisual> Categories = new List<CategoryVisual>();
         public readonly List<string> Priorities = new List<string>();
+        public readonly List<string> ReactionQuality = new List<string>();
 
         public static ReportVisualData Parse(string report)
         {
@@ -1212,6 +1222,7 @@ namespace LiveHelperWindowsObsRank
             CategoryVisual current = null;
             bool inCore = false;
             bool inPriorities = false;
+            bool inReactionQuality = false;
 
             foreach (string rawLine in lines)
             {
@@ -1219,6 +1230,7 @@ namespace LiveHelperWindowsObsRank
                 if (line.Length == 0)
                 {
                     if (inCore) inCore = false;
+                    if (inReactionQuality) inReactionQuality = false;
                     continue;
                 }
 
@@ -1243,19 +1255,35 @@ namespace LiveHelperWindowsObsRank
                 {
                     inCore = false;
                     inPriorities = false;
+                    inReactionQuality = false;
                 }
                 else if (line == "오늘 바로 수정할 순서")
                 {
                     inPriorities = true;
                     inCore = false;
+                    inReactionQuality = false;
+                }
+                else if (line == "반응 품질 참고")
+                {
+                    inReactionQuality = true;
+                    inPriorities = false;
+                    inCore = false;
+                    current = null;
                 }
                 else if (line == "최종 해석")
                 {
                     inPriorities = false;
                     inCore = false;
+                    inReactionQuality = false;
                 }
                 else
                 {
+                    if (inReactionQuality && line.StartsWith("-"))
+                    {
+                        data.ReactionQuality.Add(line.TrimStart('-', ' '));
+                        continue;
+                    }
+
                     Match category = Regex.Match(line, @"^\d+\.\s*(.+?):\s*내\s*(\d+)점\s*/\s*(.+?)\s*(\d+)점\s*/\s*(.+)$");
                     if (category.Success)
                     {

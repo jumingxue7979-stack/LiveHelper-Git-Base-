@@ -243,7 +243,7 @@ public final class LiveRankClient {
         JSONObject payload = getJson("videos", query(new String[][] {
             {"part", "snippet,statistics,liveStreamingDetails"},
             {"id", ids.toString()},
-            {"fields", "items(id,snippet(title,description,tags,channelId,channelTitle,liveBroadcastContent,thumbnails),statistics(viewCount,likeCount,commentCount),liveStreamingDetails(concurrentViewers,actualStartTime))"}
+            {"fields", "items(id,snippet(title,description,tags,channelId,channelTitle,liveBroadcastContent,thumbnails),statistics(viewCount,likeCount),liveStreamingDetails(concurrentViewers,actualStartTime))"}
         }));
         JSONArray items = payload.optJSONArray("items");
         if (items == null) return map;
@@ -281,6 +281,8 @@ public final class LiveRankClient {
             info.channelId = item.optString("id", "");
             info.channelTitle = snippet == null ? "" : snippet.optString("title", "");
             info.subscriberCount = stats == null || stats.optBoolean("hiddenSubscriberCount", false) ? null : optLong(stats, "subscriberCount");
+            info.viewCount = optLong(stats, "viewCount");
+            info.videoCount = optLong(stats, "videoCount");
             map.put(info.channelId, info);
         }
         return map;
@@ -318,7 +320,6 @@ public final class LiveRankClient {
         if (stats != null) {
             info.viewCount = optLong(stats, "viewCount");
             info.likeCount = optLong(stats, "likeCount");
-            info.commentCount = optLong(stats, "commentCount");
         }
         if (live != null) {
             info.currentViewers = optLong(live, "concurrentViewers");
