@@ -901,6 +901,7 @@ namespace LiveHelperWindowsObsRank
         private void DrawCategoryComparison(Graphics g)
         {
             DrawString(g, "3대 카테고리 점수 비교", sectionFont, ink, new RectangleF(32, 286, 360, 26));
+            DrawString(g, "총점 100점 = 트래픽 60 + 채널 30 + 기본 10", smallFont, muted, new RectangleF(372, 290, 360, 18), Far());
             Rectangle card = new Rectangle(32, 318, 700, 410);
             DrawCard(g, card, Color.White);
 
@@ -1015,18 +1016,19 @@ namespace LiveHelperWindowsObsRank
 
         private void DrawReactionQuality(Graphics g)
         {
-            Rectangle card = new Rectangle(32, 878, 1068, 58);
-            DrawCard(g, card, Color.White);
-            DrawString(g, "반응 품질 참고", bodyBoldFont, ink, new RectangleF(card.X + 18, card.Y + 10, 140, 20));
+            Rectangle card = new Rectangle(32, 878, 1068, 72);
+            DrawCard(g, card, Color.FromArgb(255, 251, 235));
+            DrawString(g, "반응 품질 (참고)", bodyBoldFont, ink, new RectangleF(card.X + 18, card.Y + 12, 150, 20));
+            DrawBadge(g, new Rectangle(card.X + 168, card.Y + 9, 98, 26), "총점 미반영", Color.FromArgb(254, 243, 199), Color.FromArgb(253, 230, 138), Color.FromArgb(146, 64, 14));
             string chat = data.ReactionQuality.Count > 0 ? data.ReactionQuality[0] : "채팅 참여율: 라이브 채팅 데이터 연결 전 단계";
             string like = data.ReactionQuality.Count > 1 ? data.ReactionQuality[1] : "좋아요 반응: 확인 전";
-            DrawString(g, chat, bodyFont, muted, new RectangleF(card.X + 166, card.Y + 10, card.Width - 190, 20));
-            DrawString(g, like, bodyFont, muted, new RectangleF(card.X + 166, card.Y + 32, card.Width - 190, 18));
+            DrawString(g, MarkReferenceOnly(chat), bodyFont, muted, new RectangleF(card.X + 288, card.Y + 12, card.Width - 310, 20));
+            DrawString(g, MarkReferenceOnly(like), bodyFont, muted, new RectangleF(card.X + 288, card.Y + 40, card.Width - 310, 18));
         }
 
         private void DrawNotice(Graphics g)
         {
-            Rectangle notice = new Rectangle(32, 954, 1068, 54);
+            Rectangle notice = new Rectangle(32, 968, 1068, 54);
             DrawCard(g, notice, Color.FromArgb(239, 246, 255));
             DrawString(g, "참고사항", bodyBoldFont, Color.FromArgb(29, 78, 216), new RectangleF(notice.X + 18, notice.Y + 10, 110, 20));
             DrawString(g, "LiveRank는 공개 데이터와 일반 진단 기준으로 비교 분석을 제공합니다. 1등 진입이나 조회수 상승을 보장하지 않습니다.", bodyFont, muted, new RectangleF(notice.X + 128, notice.Y + 10, notice.Width - 148, 22));
@@ -1186,6 +1188,12 @@ namespace LiveHelperWindowsObsRank
             if (label.Contains("채널")) return "채널";
             if (label.Contains("기본")) return "최적화";
             return "반응";
+        }
+
+        private string MarkReferenceOnly(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return "확인 전 · 총점 미반영";
+            return text.Contains("총점 미반영") ? text : text + " · 총점 미반영";
         }
 
         private string Blank(string value, string fallback)

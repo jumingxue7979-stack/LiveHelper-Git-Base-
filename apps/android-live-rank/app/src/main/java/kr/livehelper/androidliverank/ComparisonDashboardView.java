@@ -70,7 +70,8 @@ public final class ComparisonDashboardView extends View {
         drawDiagnosisCards(canvas, 20, 338);
 
         text(canvas, "3대 카테고리 점수", 20, 590, 18, Color.rgb(15, 23, 42), true, Paint.Align.LEFT);
-        text(canvas, "3대 구조", 400, 594, 11, Color.rgb(100, 116, 139), false, Paint.Align.RIGHT);
+        text(canvas, "총점 100점", 400, 594, 11, Color.rgb(100, 116, 139), false, Paint.Align.RIGHT);
+        text(canvas, "트래픽 60 + 채널 30 + 기본 10", 400, 609, 10, Color.rgb(100, 116, 139), false, Paint.Align.RIGHT);
         card(canvas, 20, 622, 380, 190, Color.WHITE);
         List<Row> rows = data.orderedRows();
         for (int i = 0; i < rows.size() && i < 3; i += 1) {
@@ -151,12 +152,13 @@ public final class ComparisonDashboardView extends View {
     }
 
     private void drawReactionQuality(Canvas canvas, float x, float y) {
-        card(canvas, x, y, 380, 110, Color.WHITE);
-        text(canvas, "반응 품질 참고", x + 16, y + 14, 14, Color.rgb(15, 23, 42), true, Paint.Align.LEFT);
+        card(canvas, x, y, 380, 110, Color.rgb(255, 251, 235));
+        text(canvas, "반응 품질 (참고)", x + 16, y + 14, 14, Color.rgb(15, 23, 42), true, Paint.Align.LEFT);
+        badge(canvas, x + 260, y + 11, 104, 24, "총점 미반영", Color.rgb(254, 243, 199), Color.rgb(253, 230, 138), Color.rgb(146, 64, 14));
         String first = data.reactionLines.size() > 0 ? data.reactionLines.get(0) : "채팅 참여율: 라이브 채팅 데이터 연결 전 단계";
         String second = data.reactionLines.size() > 1 ? data.reactionLines.get(1) : "좋아요 반응: 확인 전";
-        multiline(canvas, first, x + 16, y + 42, 348, 11, Color.rgb(51, 65, 85), 2);
-        multiline(canvas, second, x + 16, y + 74, 348, 11, Color.rgb(51, 65, 85), 2);
+        multiline(canvas, referenceLine(first), x + 16, y + 42, 348, 11, Color.rgb(51, 65, 85), 2);
+        multiline(canvas, referenceLine(second), x + 16, y + 74, 348, 11, Color.rgb(51, 65, 85), 2);
     }
 
     private void card(Canvas canvas, float x, float y, float w, float h, int color) {
@@ -169,6 +171,19 @@ public final class ComparisonDashboardView extends View {
         paint.setColor(Color.rgb(226, 232, 240));
         canvas.drawRoundRect(rect, 10, 10, paint);
         paint.setStyle(Paint.Style.FILL);
+    }
+
+    private void badge(Canvas canvas, float x, float y, float w, float h, String label, int fill, int line, int textColor) {
+        paint.setStyle(Paint.Style.FILL);
+        paint.setColor(fill);
+        RectF rect = new RectF(x, y, x + w, y + h);
+        canvas.drawRoundRect(rect, 8, 8, paint);
+        paint.setStyle(Paint.Style.STROKE);
+        paint.setStrokeWidth(1);
+        paint.setColor(line);
+        canvas.drawRoundRect(rect, 8, 8, paint);
+        paint.setStyle(Paint.Style.FILL);
+        text(canvas, label, x + w / 2f, y + 5, 10, textColor, true, Paint.Align.CENTER);
     }
 
     private void bar(Canvas canvas, float x, float y, float w, float h, int score, int color) {
@@ -270,6 +285,11 @@ public final class ComparisonDashboardView extends View {
 
     private String blank(String value, String fallback) {
         return value == null || value.trim().length() == 0 ? fallback : value.trim();
+    }
+
+    private String referenceLine(String value) {
+        String text = value == null || value.trim().length() == 0 ? "확인 전" : value.trim();
+        return text.contains("총점 미반영") ? text : text + " · 총점 미반영";
     }
 
     private static final class ReportData {
