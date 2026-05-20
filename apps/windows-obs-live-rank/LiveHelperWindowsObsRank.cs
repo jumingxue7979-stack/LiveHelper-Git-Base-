@@ -36,9 +36,19 @@ namespace LiveHelperWindowsObsRank
         private readonly TextBox apiBox = new TextBox();
         private readonly TextBox channelBox = new TextBox();
         private readonly TextBox keywordBox = new TextBox();
+        private readonly Panel mainPanel = new Panel();
+        private readonly Panel settingsPanel = new Panel();
+        private readonly Panel liveStatusBar = new Panel();
+        private readonly Label liveStatusLabel = new Label();
         private readonly Label statusLabel = new Label();
         private readonly Button startButton = new Button();
         private readonly Button stopButton = new Button();
+        private readonly Button reportButton = new Button();
+        private readonly Button settingsButton = new Button();
+        private readonly Button saveButton = new Button();
+        private readonly Button guideButton = new Button();
+        private readonly Button backButton = new Button();
+        private readonly Label guideLabel = new Label();
         private readonly Timer firstTimer = new Timer();
         private readonly Timer refreshTimer = new Timer();
         private readonly string settingsPath;
@@ -48,6 +58,7 @@ namespace LiveHelperWindowsObsRank
         private bool isChecking;
         private bool isGeneratingComparison;
         private int preLiveMisses;
+        private int consecutiveErrors;
         private string lockedVideoId = "";
         private string lastKnownVideoId = "";
         private string lastKnownVideoTitle = "";
@@ -67,7 +78,7 @@ namespace LiveHelperWindowsObsRank
             StartPosition = FormStartPosition.CenterScreen;
             FormBorderStyle = FormBorderStyle.FixedSingle;
             MaximizeBox = false;
-            ClientSize = new Size(430, 472);
+            ClientSize = new Size(430, 340);
             BackColor = Color.FromArgb(248, 250, 252);
 
             string settingsDir = Path.Combine(
@@ -105,71 +116,221 @@ namespace LiveHelperWindowsObsRank
             title.SetBounds(20, 22, 390, 44);
             Controls.Add(title);
 
-            Label sub = new Label();
-            sub.Text = "처음 한 번 저장하고, 다음부터 OBS 방송 시작만 누르세요.";
-            sub.Font = new Font("Malgun Gothic", 10, FontStyle.Regular);
-            sub.ForeColor = Color.FromArgb(71, 85, 105);
-            sub.TextAlign = ContentAlignment.MiddleCenter;
-            sub.SetBounds(20, 72, 390, 24);
-            Controls.Add(sub);
-
-            AddLabel("API", 24, 112);
-            apiBox.SetBounds(24, 134, 382, 30);
-            apiBox.PasswordChar = '*';
-            Controls.Add(apiBox);
-
-            AddLabel("채널 주소", 24, 172);
-            channelBox.SetBounds(24, 194, 382, 30);
-            Controls.Add(channelBox);
-
-            AddLabel("키워드", 24, 232);
-            keywordBox.SetBounds(24, 254, 382, 30);
-            Controls.Add(keywordBox);
+            mainPanel.SetBounds(0, 92, 430, 248);
+            Controls.Add(mainPanel);
 
             startButton.Text = "OBS 방송 시작";
             startButton.Font = new Font("Malgun Gothic", 12, FontStyle.Bold);
             startButton.ForeColor = Color.White;
             startButton.BackColor = Color.FromArgb(225, 29, 72);
             startButton.FlatStyle = FlatStyle.Flat;
-            startButton.SetBounds(24, 304, 382, 44);
+            startButton.SetBounds(24, 0, 382, 44);
             startButton.Click += (sender, args) => StartMonitoring();
-            Controls.Add(startButton);
+            mainPanel.Controls.Add(startButton);
 
-            stopButton.Text = "오늘 방송 종료";
-            stopButton.Font = new Font("Malgun Gothic", 10, FontStyle.Bold);
-            stopButton.ForeColor = Color.White;
-            stopButton.BackColor = Color.FromArgb(71, 85, 105);
-            stopButton.FlatStyle = FlatStyle.Flat;
-            stopButton.SetBounds(24, 356, 382, 36);
-            stopButton.Click += (sender, args) => StopMonitoring("방송 순위 팝업을 종료했습니다.");
-            Controls.Add(stopButton);
-
-            Button reportButton = new Button();
             reportButton.Text = "최근 비교 분석 보기";
             reportButton.Font = new Font("Malgun Gothic", 10, FontStyle.Bold);
             reportButton.ForeColor = Color.White;
             reportButton.BackColor = Color.FromArgb(37, 99, 235);
             reportButton.FlatStyle = FlatStyle.Flat;
-            reportButton.SetBounds(24, 400, 382, 36);
+            reportButton.SetBounds(24, 56, 382, 44);
             reportButton.Click += (sender, args) => ShowLatestComparisonReport();
-            Controls.Add(reportButton);
+            mainPanel.Controls.Add(reportButton);
+
+            settingsButton.Text = "설정";
+            settingsButton.Font = new Font("Malgun Gothic", 10, FontStyle.Bold);
+            settingsButton.ForeColor = Color.White;
+            settingsButton.BackColor = Color.FromArgb(71, 85, 105);
+            settingsButton.FlatStyle = FlatStyle.Flat;
+            settingsButton.SetBounds(24, 112, 382, 44);
+            settingsButton.Click += (sender, args) => ShowSettings();
+            mainPanel.Controls.Add(settingsButton);
+
+            liveStatusBar.SetBounds(24, 172, 382, 44);
+            liveStatusBar.BackColor = Color.FromArgb(239, 246, 255);
+            liveStatusBar.Visible = false;
+            mainPanel.Controls.Add(liveStatusBar);
+
+            liveStatusLabel.Text = "● 라이브 분석 중";
+            liveStatusLabel.Font = new Font("Malgun Gothic", 10, FontStyle.Bold);
+            liveStatusLabel.ForeColor = Color.FromArgb(29, 78, 216);
+            liveStatusLabel.TextAlign = ContentAlignment.MiddleLeft;
+            liveStatusLabel.SetBounds(14, 0, 260, 44);
+            liveStatusBar.Controls.Add(liveStatusLabel);
+
+            stopButton.Text = "중지";
+            stopButton.Font = new Font("Malgun Gothic", 10, FontStyle.Bold);
+            stopButton.ForeColor = Color.White;
+            stopButton.BackColor = Color.FromArgb(71, 85, 105);
+            stopButton.FlatStyle = FlatStyle.Flat;
+            stopButton.SetBounds(296, 7, 72, 30);
+            stopButton.Click += (sender, args) => ConfirmStopMonitoring();
+            liveStatusBar.Controls.Add(stopButton);
 
             statusLabel.Font = new Font("Malgun Gothic", 9, FontStyle.Regular);
             statusLabel.ForeColor = Color.FromArgb(71, 85, 105);
             statusLabel.TextAlign = ContentAlignment.MiddleCenter;
-            statusLabel.SetBounds(24, 444, 382, 22);
-            statusLabel.Text = "OBS로 방송할 때만 시작하세요.";
-            Controls.Add(statusLabel);
+            statusLabel.SetBounds(24, 224, 382, 22);
+            statusLabel.Visible = false;
+            mainPanel.Controls.Add(statusLabel);
+
+            settingsPanel.SetBounds(0, 92, 430, 608);
+            settingsPanel.Visible = false;
+            Controls.Add(settingsPanel);
+
+            AddLabel(settingsPanel, "API", 24, 0);
+            apiBox.SetBounds(24, 22, 382, 30);
+            apiBox.PasswordChar = '*';
+            settingsPanel.Controls.Add(apiBox);
+
+            AddLabel(settingsPanel, "채널 주소", 24, 60);
+            channelBox.SetBounds(24, 82, 382, 30);
+            settingsPanel.Controls.Add(channelBox);
+
+            AddLabel(settingsPanel, "키워드", 24, 120);
+            keywordBox.SetBounds(24, 142, 382, 30);
+            settingsPanel.Controls.Add(keywordBox);
+
+            saveButton.Text = "설정 저장";
+            saveButton.Font = new Font("Malgun Gothic", 10, FontStyle.Bold);
+            saveButton.ForeColor = Color.White;
+            saveButton.BackColor = Color.FromArgb(37, 99, 235);
+            saveButton.FlatStyle = FlatStyle.Flat;
+            saveButton.SetBounds(24, 192, 382, 40);
+            saveButton.Click += (sender, args) => SaveSettingsFromForm();
+            settingsPanel.Controls.Add(saveButton);
+
+            guideButton.Text = "사용 방법 / 이용 안내";
+            guideButton.Font = new Font("Malgun Gothic", 10, FontStyle.Bold);
+            guideButton.ForeColor = Color.White;
+            guideButton.BackColor = Color.FromArgb(71, 85, 105);
+            guideButton.FlatStyle = FlatStyle.Flat;
+            guideButton.SetBounds(24, 244, 382, 40);
+            guideButton.Click += (sender, args) => ToggleGuide();
+            settingsPanel.Controls.Add(guideButton);
+
+            guideLabel.Text =
+                "처음 1회만 API 키, 채널 주소, 키워드를 저장하세요.\r\n\r\n"
+                + "다음 방송부터는 OBS 방송 시작 버튼만 누르면 LiveRank가 자동으로 분석을 시작합니다.\r\n\r\n"
+                + "방송 앱에서 라이브를 끝내면 LiveRank도 자동으로 정리됩니다.\r\n\r\n"
+                + "분석을 수동으로 멈추고 싶을 때만 [중지] 버튼을 사용하세요.\r\n\r\n"
+                + "LiveRank는 YouTube 라이브 신호 자체를 분석하므로, 어떤 방송 앱을 사용하셔도 분석이 동작합니다. 기본 추천은 PC는 OBS, 모바일은 PRISM 또는 YouTube 앱입니다.";
+            guideLabel.Font = new Font("Malgun Gothic", 9, FontStyle.Regular);
+            guideLabel.ForeColor = Color.FromArgb(51, 65, 85);
+            guideLabel.BackColor = Color.White;
+            guideLabel.Padding = new Padding(12, 10, 12, 10);
+            guideLabel.SetBounds(24, 296, 382, 230);
+            guideLabel.Visible = true;
+            settingsPanel.Controls.Add(guideLabel);
+
+            backButton.Text = "메인으로 돌아가기";
+            backButton.Font = new Font("Malgun Gothic", 10, FontStyle.Bold);
+            backButton.ForeColor = Color.White;
+            backButton.BackColor = Color.FromArgb(100, 116, 139);
+            backButton.FlatStyle = FlatStyle.Flat;
+            backButton.SetBounds(24, 540, 382, 40);
+            backButton.Click += (sender, args) => ShowMain();
+            settingsPanel.Controls.Add(backButton);
         }
 
-        private void AddLabel(string text, int x, int y)
+        private void AddLabel(Control parent, string text, int x, int y)
         {
             Label label = new Label();
             label.Text = text;
             label.Font = new Font("Malgun Gothic", 9, FontStyle.Bold);
             label.ForeColor = Color.FromArgb(15, 23, 42);
             label.SetBounds(x, y, 150, 20);
-            Controls.Add(label);
+            parent.Controls.Add(label);
+        }
+
+        private void ShowMain()
+        {
+            settingsPanel.Visible = false;
+            mainPanel.Visible = true;
+            ClientSize = new Size(430, 340);
+            UpdateLiveStatusBar();
+        }
+
+        private void ShowSettings()
+        {
+            mainPanel.Visible = false;
+            settingsPanel.Visible = true;
+            ClientSize = new Size(430, 700);
+            WindowState = FormWindowState.Normal;
+            Activate();
+        }
+
+        private void SaveSettingsFromForm()
+        {
+            if (apiBox.Text.Trim().Length == 0 || channelBox.Text.Trim().Length == 0 || keywordBox.Text.Trim().Length == 0)
+            {
+                MessageBox.Show(this, "API, 채널 주소, 키워드를 모두 입력해 주세요.", "설정 저장", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            SaveSettings();
+            ShowMain();
+            SetStatus("설정이 저장되었습니다.", false);
+        }
+
+        private void ToggleGuide()
+        {
+            guideLabel.Visible = !guideLabel.Visible;
+        }
+
+        private void ConfirmStopMonitoring()
+        {
+            using (Form dialog = new Form())
+            {
+                dialog.Text = "LiveRank 분석 중지";
+                dialog.StartPosition = FormStartPosition.CenterParent;
+                dialog.FormBorderStyle = FormBorderStyle.FixedDialog;
+                dialog.MaximizeBox = false;
+                dialog.MinimizeBox = false;
+                dialog.ClientSize = new Size(360, 146);
+                dialog.BackColor = Color.White;
+
+                Label message = new Label();
+                message.Text = "LiveRank 분석을 중지할까요?\r\n방송은 종료되지 않습니다.";
+                message.Font = new Font("Malgun Gothic", 10, FontStyle.Regular);
+                message.ForeColor = Color.FromArgb(15, 23, 42);
+                message.TextAlign = ContentAlignment.MiddleCenter;
+                message.SetBounds(18, 18, 324, 52);
+                dialog.Controls.Add(message);
+
+                Button stop = new Button();
+                stop.Text = "중지";
+                stop.Font = new Font("Malgun Gothic", 10, FontStyle.Bold);
+                stop.ForeColor = Color.White;
+                stop.BackColor = Color.FromArgb(225, 29, 72);
+                stop.FlatStyle = FlatStyle.Flat;
+                stop.DialogResult = DialogResult.OK;
+                stop.SetBounds(82, 88, 88, 36);
+                dialog.Controls.Add(stop);
+
+                Button cancel = new Button();
+                cancel.Text = "취소";
+                cancel.Font = new Font("Malgun Gothic", 10, FontStyle.Bold);
+                cancel.ForeColor = Color.White;
+                cancel.BackColor = Color.FromArgb(100, 116, 139);
+                cancel.FlatStyle = FlatStyle.Flat;
+                cancel.DialogResult = DialogResult.Cancel;
+                cancel.SetBounds(190, 88, 88, 36);
+                dialog.Controls.Add(cancel);
+
+                dialog.AcceptButton = stop;
+                dialog.CancelButton = cancel;
+
+                if (dialog.ShowDialog(this) == DialogResult.OK)
+                {
+                    StopMonitoring("LiveRank 분석을 중지했습니다.");
+                }
+            }
+        }
+
+        private void UpdateLiveStatusBar()
+        {
+            liveStatusBar.Visible = monitoringActive;
         }
 
         private void StartMonitoring()
@@ -179,7 +340,8 @@ namespace LiveHelperWindowsObsRank
             string keyword = keywordBox.Text.Trim();
             if (apiKey.Length == 0 || channel.Length == 0 || keyword.Length == 0)
             {
-                SetStatus("API, 채널 주소, 키워드를 모두 입력해 주세요.", true);
+                ShowSettings();
+                MessageBox.Show(this, "먼저 API, 채널 주소, 키워드를 저장해 주세요.", "설정 필요", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
@@ -187,6 +349,7 @@ namespace LiveHelperWindowsObsRank
             StopTimersOnly();
             client = new YoutubeClient(apiKey);
             preLiveMisses = 0;
+            consecutiveErrors = 0;
             lockedVideoId = "";
             lastKnownVideoId = "";
             lastKnownVideoTitle = "";
@@ -201,6 +364,7 @@ namespace LiveHelperWindowsObsRank
             ClearLatestComparisonReport();
 
             TryOpenObs();
+            UpdateLiveStatusBar();
             SetStatus("첫 순위 조회는 5분 후 시작합니다.", false);
             WindowState = FormWindowState.Minimized;
             firstTimer.Start();
@@ -268,10 +432,16 @@ namespace LiveHelperWindowsObsRank
                 }
                 catch (Exception ex)
                 {
+                    consecutiveErrors += 1;
                     BeginInvoke(new Action(() =>
                     {
                         ShowPopup("조회 실패", "확인 필요", ShortText(ex.Message));
                         SetStatus("조회 실패: " + ShortText(ex.Message), true);
+                        if (consecutiveErrors >= 3)
+                        {
+                            StopMonitoring("연속 조회 실패로 자동 종료했습니다.");
+                            return;
+                        }
                         refreshTimer.Start();
                     }));
                 }
@@ -284,6 +454,12 @@ namespace LiveHelperWindowsObsRank
 
         private bool FetchAndShowRank()
         {
+            if (lockedVideoId.Length > 0 && !client.IsVideoLive(lockedVideoId))
+            {
+                BeginInvoke(new Action(() => StopMonitoring("라이브 종료 확인, 순위 조회를 멈췄습니다.")));
+                return false;
+            }
+
             RankResult result = client.FetchLiveRankForVideo(
                 channelBox.Text.Trim(),
                 keywordBox.Text.Trim(),
@@ -299,12 +475,12 @@ namespace LiveHelperWindowsObsRank
                 SaveLastSession();
             }
 
-            bool stillLive = isVisible || (lockedVideoId.Length > 0 && client.IsVideoLive(lockedVideoId));
-            if (!stillLive)
+            if (lockedVideoId.Length > 0 && !client.IsVideoLive(lockedVideoId))
             {
                 BeginInvoke(new Action(() => StopMonitoring("라이브 종료 확인, 순위 조회를 멈췄습니다.")));
                 return false;
             }
+            consecutiveErrors = 0;
 
             if (!isVisible)
             {
@@ -380,6 +556,7 @@ namespace LiveHelperWindowsObsRank
             }
             lockedVideoId = "";
             preLiveMisses = 0;
+            consecutiveErrors = 0;
             isChecking = false;
             if (monitoringActive)
             {
@@ -388,6 +565,7 @@ namespace LiveHelperWindowsObsRank
             monitoringActive = false;
             SaveLastSession();
             if (closePopup && popup != null && !popup.IsDisposed) popup.Close();
+            ShowMain();
             SetStatus(message, false);
             WindowState = FormWindowState.Normal;
             Activate();
@@ -421,6 +599,7 @@ namespace LiveHelperWindowsObsRank
         {
             statusLabel.Text = text;
             statusLabel.ForeColor = error ? Color.FromArgb(185, 28, 28) : Color.FromArgb(4, 120, 87);
+            statusLabel.Visible = text.Length > 0;
         }
 
         private void LoadSettings()
@@ -801,7 +980,15 @@ namespace LiveHelperWindowsObsRank
                     ? data.CompetitorShortLabel + "와의 격차가 큰 항목부터 고치면 다음 방송의 진입 가능성을 높일 수 있습니다."
                     : "현재 강점은 유지하고 낮은 항목만 보강하세요.";
             }
-            DrawMultiline(g, text, bodyFont, ink, new RectangleF(card.X + 20, card.Y + 48, card.Width - 40, card.Height - 62));
+            bool hasInterpretationNote = !string.IsNullOrWhiteSpace(data.InterpretationNote);
+            RectangleF bodyRect = hasInterpretationNote
+                ? new RectangleF(card.X + 20, card.Y + 48, card.Width - 40, card.Height - 104)
+                : new RectangleF(card.X + 20, card.Y + 48, card.Width - 40, card.Height - 62);
+            DrawMultiline(g, text, bodyFont, ink, bodyRect);
+            if (hasInterpretationNote)
+            {
+                DrawMultiline(g, data.InterpretationNote, smallFont, Color.FromArgb(30, 64, 175), new RectangleF(card.X + 20, card.Bottom - 50, card.Width - 40, 42));
+            }
         }
 
         private void DrawPriorities(Graphics g)
@@ -1013,6 +1200,7 @@ namespace LiveHelperWindowsObsRank
         public string CompetitorGrade = "";
         public int Gap;
         public string CoreDiagnosis = "";
+        public string InterpretationNote = "";
         public readonly List<CategoryVisual> Categories = new List<CategoryVisual>();
         public readonly List<string> Priorities = new List<string>();
 
@@ -1101,8 +1289,16 @@ namespace LiveHelperWindowsObsRank
 
                     if (inCore && line.StartsWith("-"))
                     {
-                        if (data.CoreDiagnosis.Length > 0) data.CoreDiagnosis += "\n";
-                        data.CoreDiagnosis += line.TrimStart('-', ' ');
+                        string coreLine = line.TrimStart('-', ' ');
+                        if (coreLine.StartsWith("순위 해석:"))
+                        {
+                            data.InterpretationNote = coreLine;
+                        }
+                        else
+                        {
+                            if (data.CoreDiagnosis.Length > 0) data.CoreDiagnosis += "\n";
+                            data.CoreDiagnosis += coreLine;
+                        }
                         continue;
                     }
 
