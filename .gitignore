@@ -5,6 +5,7 @@ obj/
 *.exe
 *.dll
 *.pdb
+apps/android-live-rank/build/
 
 # Local signing and machine-specific files
 *.pfx
