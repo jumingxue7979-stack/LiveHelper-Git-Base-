@@ -78,6 +78,10 @@ namespace LiveHelperWindowsObsRank
 
     internal static class ComparisonAnalyzer
     {
+        private const string InterpretationCaseA = "현재 내 채널은 노필터 라이브 1위입니다. 다만 채널/콘텐츠 진단 점수는 2위 채널이 더 높습니다. 따라서 현재 1위는 제목·메타 우위보다 실시간 유입 품질과 반응 신호 영향으로 해석됩니다.";
+        private const string InterpretationCaseB = "진단 점수는 내 채널이 우위지만, 실제 노필터 순위는 낮습니다. 이 경우 콘텐츠 점수보다 실시간 유입 품질, 시청 유지, 반응 신호에서 차이가 난 것으로 해석됩니다.";
+        private const string InterpretationDefault = "순위 차이의 핵심 원인은 콘텐츠 점수보다 실시간 유입 품질과 반응 신호 차이로 보입니다.";
+
         public static ComparisonReport Empty(string keyword, string ownChannelTitle, string summary, int ownNoFilterRank)
         {
             ComparisonReport report = new ComparisonReport();
@@ -424,7 +428,7 @@ namespace LiveHelperWindowsObsRank
             builder.AppendLine("- 내 구독자 수: " + NumberText(ownStats.SubscriberCount));
             builder.AppendLine("- " + report.CompetitorShortLabel + " 구독자 수: " + NumberText(competitorStats.SubscriberCount));
             builder.AppendLine();
-            AppendCoreDiagnosis(builder, labels, gaps, report.CompetitorShortLabel);
+            AppendCoreDiagnosis(builder, labels, gaps, report);
             builder.AppendLine("항목별 진단");
             for (int index = 0; index < labels.Length; index += 1)
             {
@@ -451,7 +455,7 @@ namespace LiveHelperWindowsObsRank
             return builder.ToString();
         }
 
-        private static void AppendCoreDiagnosis(StringBuilder builder, string[] labels, int[] gaps, string competitorLabel)
+        private static void AppendCoreDiagnosis(StringBuilder builder, string[] labels, int[] gaps, ComparisonReport report)
         {
             int worst = -1;
             int second = -1;
@@ -474,11 +478,28 @@ namespace LiveHelperWindowsObsRank
             }
             builder.AppendLine("핵심 진단");
             if (best >= 0) builder.AppendLine("- 강점: " + DisplayLabel(labels[best]) + "은 내 채널이 " + Math.Abs(gaps[best]) + "점 앞섭니다.");
-            else builder.AppendLine("- 강점: 현재 공개 지표상 " + competitorLabel + "보다 확실히 앞선 항목은 크지 않습니다.");
-            if (worst >= 0) builder.AppendLine("- 치명적 격차: " + DisplayLabel(labels[worst]) + "에서 " + competitorLabel + "가 " + gaps[worst] + "점 앞섭니다.");
+            else builder.AppendLine("- 강점: 현재 공개 지표상 " + report.CompetitorShortLabel + "보다 확실히 앞선 항목은 크지 않습니다.");
+            if (worst >= 0) builder.AppendLine("- 치명적 격차: " + DisplayLabel(labels[worst]) + "에서 " + report.CompetitorShortLabel + "가 " + gaps[worst] + "점 앞섭니다.");
             if (second >= 0) builder.AppendLine("- 두 번째 약점: " + DisplayLabel(labels[second]) + "도 " + gaps[second] + "점 차이가 납니다.");
             builder.AppendLine("- 결론: 점수를 보는 화면이 아니라, 위 약점부터 고치기 위한 실행 순서표입니다.");
+            builder.AppendLine("- 순위 해석: " + InterpretationNote(report));
             builder.AppendLine();
+        }
+
+        private static string InterpretationNote(ComparisonReport report)
+        {
+            if (report.OwnNoFilterRank == 1 && report.CompetitorScore > report.OwnScore)
+            {
+                return InterpretationCaseA;
+            }
+            if (report.OwnScore > report.CompetitorScore
+                && report.OwnNoFilterRank > 0
+                && report.CompetitorNoFilterRank > 0
+                && report.OwnNoFilterRank > report.CompetitorNoFilterRank)
+            {
+                return InterpretationCaseB;
+            }
+            return InterpretationDefault;
         }
 
         private static string CategoryReason(string label)
