@@ -160,48 +160,64 @@ namespace LiveHelperWindowsObsRank
             int[] subscriberPair = RelativePair(ownStats.SubscriberCount, competitorStats.SubscriberCount);
             int[] channelViewPair = RelativePair(ownStats.ViewCount, competitorStats.ViewCount);
             int[] channelVideoPair = RelativePair(ownStats.VideoCount, competitorStats.VideoCount);
+            int ownRankAccess = RankAccessScore(ownNoFilterRank);
+            int competitorRankAccess = RankAccessScore(competitorNoFilterRank);
+            int ownCcvRate = CcvRateScore(ownVideo.CurrentViewers, ownStats.SubscriberCount);
+            int competitorCcvRate = CcvRateScore(competitorVideo.CurrentViewers, competitorStats.SubscriberCount);
+            int ownChannelBase = Average(new int[] { channelViewPair[0], channelVideoPair[0] });
+            int competitorChannelBase = Average(new int[] { channelViewPair[1], channelVideoPair[1] });
+            int ownChannelInfo = ChannelInfoScore(ownStats);
+            int competitorChannelInfo = ChannelInfoScore(competitorStats);
             int ownTrafficMass = WeightedTotal(new int[] {
                 currentPair[0],
-                RankAccessScore(ownNoFilterRank),
-                CcvRateScore(ownVideo.CurrentViewers, ownStats.SubscriberCount)
+                ownRankAccess,
+                ownCcvRate
             }, new int[] { 40, 10, 10 });
             int competitorTrafficMass = WeightedTotal(new int[] {
                 currentPair[1],
-                RankAccessScore(competitorNoFilterRank),
-                CcvRateScore(competitorVideo.CurrentViewers, competitorStats.SubscriberCount)
+                competitorRankAccess,
+                competitorCcvRate
             }, new int[] { 40, 10, 10 });
             int ownChannelInfluence = WeightedTotal(new int[] {
                 subscriberPair[0],
-                Average(new int[] { channelViewPair[0], channelVideoPair[0] }),
-                ChannelInfoScore(ownStats)
+                ownChannelBase,
+                ownChannelInfo
             }, new int[] { 15, 10, 5 });
             int competitorChannelInfluence = WeightedTotal(new int[] {
                 subscriberPair[1],
-                Average(new int[] { channelViewPair[1], channelVideoPair[1] }),
-                ChannelInfoScore(competitorStats)
+                competitorChannelBase,
+                competitorChannelInfo
             }, new int[] { 15, 10, 5 });
             int ownBasicOptimization = WeightedTotal(new int[] { ownTitle, ownMeta, ownThumb }, new int[] { 4, 3, 3 });
             int competitorBasicOptimization = WeightedTotal(new int[] { competitorTitle, competitorMeta, competitorThumb }, new int[] { 4, 3, 3 });
             string[] labels = new string[] {
-                ComparisonCategory.TrafficMass.Label,
-                ComparisonCategory.ChannelInfluence.Label,
-                ComparisonCategory.BasicOptimization.Label
+                "트래픽: 현재 시청자 상대 규모",
+                "트래픽: 노필터 순위 접근도",
+                "트래픽: 구독자 대비 현재 시청자 효율",
+                "채널: 구독자 상대 규모",
+                "채널: 누적 조회/영상 기반",
+                "채널: 정보 확인성",
+                "기본: 제목/설명/썸네일 최적화"
             };
             int[] ownScores = new int[] {
-                ownTrafficMass, ownChannelInfluence, ownBasicOptimization
+                currentPair[0], ownRankAccess, ownCcvRate, subscriberPair[0], ownChannelBase, ownChannelInfo, ownBasicOptimization
             };
             int[] competitorScores = new int[] {
-                competitorTrafficMass, competitorChannelInfluence, competitorBasicOptimization
+                currentPair[1], competitorRankAccess, competitorCcvRate, subscriberPair[1], competitorChannelBase, competitorChannelInfo, competitorBasicOptimization
             };
             int[] gaps = new int[] {
-                competitorTrafficMass - ownTrafficMass,
-                competitorChannelInfluence - ownChannelInfluence,
+                currentPair[1] - currentPair[0],
+                competitorRankAccess - ownRankAccess,
+                competitorCcvRate - ownCcvRate,
+                subscriberPair[1] - subscriberPair[0],
+                competitorChannelBase - ownChannelBase,
+                competitorChannelInfo - ownChannelInfo,
                 competitorBasicOptimization - ownBasicOptimization
             };
-            int[] weights = new int[] { 60, 30, 10 };
+            int[] weights = new int[] { 40, 10, 10, 15, 10, 5, 10 };
 
-            report.OwnScore = WeightedTotal(ownScores, weights);
-            report.CompetitorScore = WeightedTotal(competitorScores, weights);
+            report.OwnScore = WeightedTotal(new int[] { ownTrafficMass, ownChannelInfluence, ownBasicOptimization }, new int[] { 60, 30, 10 });
+            report.CompetitorScore = WeightedTotal(new int[] { competitorTrafficMass, competitorChannelInfluence, competitorBasicOptimization }, new int[] { 60, 30, 10 });
             report.OwnGrade = Grade(report.OwnScore);
             report.CompetitorGrade = Grade(report.CompetitorScore);
             report.CompetitorChannelTitle = competitorVideo.ChannelTitle;
@@ -474,7 +490,8 @@ namespace LiveHelperWindowsObsRank
             builder.AppendLine("1. 트래픽 질량 (60점 묶음): 현재 시청자, 노필터 순위 접근도, 구독자 대비 현재 시청자 효율");
             builder.AppendLine("2. 채널 영향 (30점 묶음): 구독자 규모, 채널 누적 조회/영상 기반, 채널 정보 확인성");
             builder.AppendLine("3. 기본 최적화 (10점 묶음): 제목, 설명, 썸네일 기본 신호");
-            builder.AppendLine("4. 반응 품질: 채팅 참여율과 좋아요 반응은 점수와 분리해 참고");
+            builder.AppendLine("4. 세부 점수표: 위 3대 묶음을 7개 하위 항목으로 펼쳐 표시");
+            builder.AppendLine("5. 반응 품질: 채팅 참여율과 좋아요 반응은 점수와 분리해 참고");
             builder.AppendLine();
             builder.AppendLine("실제 비교 대상");
             builder.AppendLine("- 내 제목: " + Safe(ownVideo.Title));
@@ -581,9 +598,9 @@ namespace LiveHelperWindowsObsRank
 
         private static string DisplayLabel(string label)
         {
-            if (label.StartsWith("트래픽")) return ComparisonCategory.TrafficMass.Label + " (" + ComparisonCategory.TrafficMass.WeightLabel + ")";
-            if (label.StartsWith("채널")) return ComparisonCategory.ChannelInfluence.Label + " (" + ComparisonCategory.ChannelInfluence.WeightLabel + ")";
-            if (label.StartsWith("기본")) return ComparisonCategory.BasicOptimization.Label + " (" + ComparisonCategory.BasicOptimization.WeightLabel + ")";
+            if (label.StartsWith("트래픽")) return label + " (트래픽 60)";
+            if (label.StartsWith("채널")) return label + " (채널 30)";
+            if (label.StartsWith("기본")) return label + " (기본 10)";
             return ComparisonCategory.ReactionQuality.Label + " (" + ComparisonCategory.ReactionQuality.WeightLabel + ")";
         }
 

@@ -156,7 +156,10 @@ public final class LiveRankClient {
                 String itemVideoId = videoId(item);
                 boolean isLive = "live".equals(snippet.optString("liveBroadcastContent", ""));
                 if (isLive) noFilterLiveCount += 1;
-                if (ownChannel.id.equals(snippet.optString("channelId", ""))) {
+                boolean isOwnChannel = ownChannel.id.equals(snippet.optString("channelId", ""));
+                boolean hasLockedOwnVideo = ownVideoId.length() > 0;
+                boolean isLockedOwnVideo = hasLockedOwnVideo && itemVideoId.equals(ownVideoId);
+                if (isOwnChannel && (!hasLockedOwnVideo || isLockedOwnVideo)) {
                     if (ownAnySearchItem == null || itemVideoId.equals(ownVideoId)) {
                         ownAnySearchItem = item;
                         ownAnyNoFilterRank = noFilterRank;
@@ -171,7 +174,7 @@ public final class LiveRankClient {
                         }
                     }
                 }
-                if (isLive && !ownChannel.id.equals(snippet.optString("channelId", "")) && competitorSearchItem == null) {
+                if (isLive && !isOwnChannel && competitorSearchItem == null) {
                     competitorSearchItem = item;
                     competitorNoFilterRank = noFilterRank;
                 }
@@ -387,7 +390,7 @@ public final class LiveRankClient {
             }
         }
 
-        if (fallbackItem != null) {
+        if (fallbackItem != null && result.targetVideoId.length() == 0) {
             applyMatchedSearchResult(result, fallbackItem, liveOnly, fallbackRank);
         }
     }

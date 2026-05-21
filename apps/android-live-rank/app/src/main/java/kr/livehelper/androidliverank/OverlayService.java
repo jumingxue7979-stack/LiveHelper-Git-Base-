@@ -200,11 +200,16 @@ public final class OverlayService extends Service {
                 postResult(result);
                 updateForeground("노필터 " + rankLabel(result.noFilterRank) + " · 라이브 " + rankLabel(result.liveRank));
                 if (!comparisonDone && System.currentTimeMillis() - monitoringStartedAt >= COMPARISON_DELAY_MS) {
-                    comparisonDone = true;
-                    ComparisonReport report = client.fetchComparisonReport(channel, keyword, lockedVideoId);
-                    saveComparisonReport(report);
-                    postOverlay("비교 분석 준비", report.summary, "앱에서 최근 비교 분석을 확인하세요.");
-                    updateForeground("비교 분석 준비 완료");
+                    try {
+                        comparisonDone = true;
+                        ComparisonReport report = client.fetchComparisonReport(channel, keyword, lockedVideoId);
+                        saveComparisonReport(report);
+                        postOverlay("비교 분석 준비", report.summary, "앱에서 최근 비교 분석을 확인하세요.");
+                        updateForeground("비교 분석 준비 완료");
+                    } catch (Exception reportError) {
+                        comparisonDone = false;
+                        updateForeground("비교 분석 실패: " + shortMessage(reportError.getMessage()));
+                    }
                 }
             } catch (Exception error) {
                 consecutiveErrors += 1;

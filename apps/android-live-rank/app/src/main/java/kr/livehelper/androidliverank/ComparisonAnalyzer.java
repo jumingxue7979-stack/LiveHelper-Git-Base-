@@ -46,48 +46,64 @@ final class ComparisonAnalyzer {
         int[] subscriberPair = relativePair(ownStats.subscriberCount, competitorStats.subscriberCount);
         int[] channelViewPair = relativePair(ownStats.viewCount, competitorStats.viewCount);
         int[] channelVideoPair = relativePair(ownStats.videoCount, competitorStats.videoCount);
+        int ownRankAccess = rankAccessScore(ownNoFilterRank);
+        int competitorRankAccess = rankAccessScore(competitorNoFilterRank);
+        int ownCcvRate = ccvRateScore(ownVideo.currentViewers, ownStats.subscriberCount);
+        int competitorCcvRate = ccvRateScore(competitorVideo.currentViewers, competitorStats.subscriberCount);
+        int ownChannelBase = average(new int[] { channelViewPair[0], channelVideoPair[0] });
+        int competitorChannelBase = average(new int[] { channelViewPair[1], channelVideoPair[1] });
+        int ownChannelInfo = channelInfoScore(ownStats);
+        int competitorChannelInfo = channelInfoScore(competitorStats);
         int ownTrafficMass = weightedTotal(new int[] {
             currentPair[0],
-            rankAccessScore(ownNoFilterRank),
-            ccvRateScore(ownVideo.currentViewers, ownStats.subscriberCount)
+            ownRankAccess,
+            ownCcvRate
         }, new int[] { 40, 10, 10 });
         int competitorTrafficMass = weightedTotal(new int[] {
             currentPair[1],
-            rankAccessScore(competitorNoFilterRank),
-            ccvRateScore(competitorVideo.currentViewers, competitorStats.subscriberCount)
+            competitorRankAccess,
+            competitorCcvRate
         }, new int[] { 40, 10, 10 });
         int ownChannelInfluence = weightedTotal(new int[] {
             subscriberPair[0],
-            average(new int[] { channelViewPair[0], channelVideoPair[0] }),
-            channelInfoScore(ownStats)
+            ownChannelBase,
+            ownChannelInfo
         }, new int[] { 15, 10, 5 });
         int competitorChannelInfluence = weightedTotal(new int[] {
             subscriberPair[1],
-            average(new int[] { channelViewPair[1], channelVideoPair[1] }),
-            channelInfoScore(competitorStats)
+            competitorChannelBase,
+            competitorChannelInfo
         }, new int[] { 15, 10, 5 });
         int ownBasicOptimization = weightedTotal(new int[] { ownTitle, ownMeta, ownThumb }, new int[] { 4, 3, 3 });
         int competitorBasicOptimization = weightedTotal(new int[] { competitorTitle, competitorMeta, competitorThumb }, new int[] { 4, 3, 3 });
         String[] labels = new String[] {
-            ComparisonCategory.TRAFFIC_MASS.label,
-            ComparisonCategory.CHANNEL_INFLUENCE.label,
-            ComparisonCategory.BASIC_OPTIMIZATION.label
+            "트래픽: 현재 시청자 상대 규모",
+            "트래픽: 노필터 순위 접근도",
+            "트래픽: 구독자 대비 현재 시청자 효율",
+            "채널: 구독자 상대 규모",
+            "채널: 누적 조회/영상 기반",
+            "채널: 정보 확인성",
+            "기본: 제목/설명/썸네일 최적화"
         };
         int[] ownScores = new int[] {
-            ownTrafficMass, ownChannelInfluence, ownBasicOptimization
+            currentPair[0], ownRankAccess, ownCcvRate, subscriberPair[0], ownChannelBase, ownChannelInfo, ownBasicOptimization
         };
         int[] competitorScores = new int[] {
-            competitorTrafficMass, competitorChannelInfluence, competitorBasicOptimization
+            currentPair[1], competitorRankAccess, competitorCcvRate, subscriberPair[1], competitorChannelBase, competitorChannelInfo, competitorBasicOptimization
         };
         int[] gaps = new int[] {
-            competitorTrafficMass - ownTrafficMass,
-            competitorChannelInfluence - ownChannelInfluence,
+            currentPair[1] - currentPair[0],
+            competitorRankAccess - ownRankAccess,
+            competitorCcvRate - ownCcvRate,
+            subscriberPair[1] - subscriberPair[0],
+            competitorChannelBase - ownChannelBase,
+            competitorChannelInfo - ownChannelInfo,
             competitorBasicOptimization - ownBasicOptimization
         };
-        int[] weights = new int[] { 60, 30, 10 };
+        int[] weights = new int[] { 40, 10, 10, 15, 10, 5, 10 };
 
-        report.ownScore = weightedTotal(ownScores, weights);
-        report.competitorScore = weightedTotal(competitorScores, weights);
+        report.ownScore = weightedTotal(new int[] { ownTrafficMass, ownChannelInfluence, ownBasicOptimization }, new int[] { 60, 30, 10 });
+        report.competitorScore = weightedTotal(new int[] { competitorTrafficMass, competitorChannelInfluence, competitorBasicOptimization }, new int[] { 60, 30, 10 });
         report.ownGrade = grade(report.ownScore);
         report.competitorGrade = grade(report.competitorScore);
         report.competitorChannelTitle = competitorVideo.channelTitle;
@@ -307,7 +323,7 @@ final class ComparisonAnalyzer {
         builder.append("순위 해석: ").append(interpretationNote(report)).append("\n");
         builder.append("\n");
 
-        builder.append("카테고리별 점수표\n");
+        builder.append("세부 항목 점수표\n");
         for (int index = 0; index < labels.length; index += 1) {
             builder.append(index + 1).append(". ").append(compactLabel(labels[index])).append("  ").append(statusText(gaps[index])).append("\n");
             builder.append("   내  ").append(scoreText(ownScores[index])).append(" ").append(scoreBar(ownScores[index])).append("\n");
@@ -479,7 +495,8 @@ final class ComparisonAnalyzer {
         builder.append("1. 트래픽 질량 (60점 묶음): 현재 시청자, 노필터 순위 접근도, 구독자 대비 현재 시청자 효율\n");
         builder.append("2. 채널 영향 (30점 묶음): 구독자 규모, 채널 누적 조회/영상 기반, 채널 정보 확인성\n");
         builder.append("3. 기본 최적화 (10점 묶음): 제목, 설명, 썸네일 기본 신호\n");
-        builder.append("4. 반응 품질: 채팅 참여율과 좋아요 반응은 점수와 분리해 참고\n\n");
+        builder.append("4. 세부 점수표: 위 3대 묶음을 7개 하위 항목으로 펼쳐 표시\n");
+        builder.append("5. 반응 품질: 채팅 참여율과 좋아요 반응은 점수와 분리해 참고\n\n");
 
         builder.append("실제 비교 대상\n");
         builder.append("- 내 제목: ").append(safe(ownVideo.title)).append("\n");
@@ -567,9 +584,9 @@ final class ComparisonAnalyzer {
     }
 
     private static String displayLabel(String label) {
-        if (label.startsWith("트래픽")) return ComparisonCategory.TRAFFIC_MASS.label + " (" + ComparisonCategory.TRAFFIC_MASS.weightLabel + ")";
-        if (label.startsWith("채널")) return ComparisonCategory.CHANNEL_INFLUENCE.label + " (" + ComparisonCategory.CHANNEL_INFLUENCE.weightLabel + ")";
-        if (label.startsWith("기본")) return ComparisonCategory.BASIC_OPTIMIZATION.label + " (" + ComparisonCategory.BASIC_OPTIMIZATION.weightLabel + ")";
+        if (label.startsWith("트래픽")) return label + " (트래픽 60)";
+        if (label.startsWith("채널")) return label + " (채널 30)";
+        if (label.startsWith("기본")) return label + " (기본 10)";
         return ComparisonCategory.REACTION_QUALITY.label + " (" + ComparisonCategory.REACTION_QUALITY.weightLabel + ")";
     }
 

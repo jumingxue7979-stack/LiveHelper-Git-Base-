@@ -104,7 +104,10 @@ namespace LiveHelperWindowsObsRank
                 string itemVideoId = VideoId(item);
                 bool isLive = Str(snippet, "liveBroadcastContent") == "live";
                 if (isLive) noFilterLiveCount += 1;
-                if (Str(snippet, "channelId") == ownChannel.Id)
+                bool isOwnChannel = Str(snippet, "channelId") == ownChannel.Id;
+                bool hasLockedOwnVideo = ownVideoId.Length > 0;
+                bool isLockedOwnVideo = hasLockedOwnVideo && itemVideoId == ownVideoId;
+                if (isOwnChannel && (!hasLockedOwnVideo || isLockedOwnVideo))
                 {
                     if (ownAnySearchItem == null || itemVideoId == ownVideoId)
                     {
@@ -123,7 +126,7 @@ namespace LiveHelperWindowsObsRank
                         }
                     }
                 }
-                if (isLive && Str(snippet, "channelId") != ownChannel.Id && competitorSearchItem == null)
+                if (isLive && !isOwnChannel && competitorSearchItem == null)
                 {
                     competitorSearchItem = item;
                     competitorNoFilterRank = noFilterIndex;
@@ -369,7 +372,7 @@ namespace LiveHelperWindowsObsRank
                 index += 1;
             }
 
-            if (fallbackItem != null)
+            if (fallbackItem != null && result.TargetVideoId.Length == 0)
             {
                 ApplyMatchedSearchResult(result, fallbackItem, liveOnly, fallbackRank);
             }

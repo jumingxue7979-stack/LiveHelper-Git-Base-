@@ -14,7 +14,7 @@ import java.util.regex.Pattern;
 
 public final class ComparisonDashboardView extends View {
     private static final float BASE_WIDTH = 420f;
-    private static final float BASE_HEIGHT = 1130f;
+    private static final float BASE_HEIGHT = 1320f;
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final ReportData data = new ReportData();
 
@@ -69,20 +69,20 @@ public final class ComparisonDashboardView extends View {
         text(canvas, "핵심 진단", 20, 306, 18, Color.rgb(15, 23, 42), true, Paint.Align.LEFT);
         drawDiagnosisCards(canvas, 20, 338);
 
-        text(canvas, "3대 카테고리 점수", 20, 590, 18, Color.rgb(15, 23, 42), true, Paint.Align.LEFT);
+        text(canvas, "세부 항목 점수", 20, 590, 18, Color.rgb(15, 23, 42), true, Paint.Align.LEFT);
         text(canvas, "총점 100점", 400, 594, 11, Color.rgb(100, 116, 139), false, Paint.Align.RIGHT);
         text(canvas, "트래픽 60 + 채널 30 + 기본 10", 400, 609, 10, Color.rgb(100, 116, 139), false, Paint.Align.RIGHT);
-        card(canvas, 20, 622, 380, 190, Color.WHITE);
+        card(canvas, 20, 622, 380, 388, Color.WHITE);
         List<Row> rows = data.orderedRows();
-        for (int i = 0; i < rows.size() && i < 3; i += 1) {
-            drawCategoryRow(canvas, rows.get(i), i, 640 + i * 51);
+        for (int i = 0; i < rows.size() && i < 7; i += 1) {
+            drawCategoryRow(canvas, rows.get(i), i, 640 + i * 52);
         }
 
-        drawReactionQuality(canvas, 20, 836);
+        drawReactionQuality(canvas, 20, 1034);
 
-        card(canvas, 20, 970, 380, 86, Color.rgb(239, 246, 255));
-        text(canvas, "참고사항", 36, 984, 13, Color.rgb(37, 99, 235), true, Paint.Align.LEFT);
-        multiline(canvas, "본 리포트는 공개 API 기준 진단이며, 1위 진입이나 조회수 상승을 보장하지 않습니다. 다음 방송에서 무엇을 고칠지 확인하는 참고 자료입니다.", 36, 1008, 348, 11, Color.rgb(51, 65, 85), 3);
+        card(canvas, 20, 1168, 380, 86, Color.rgb(239, 246, 255));
+        text(canvas, "참고사항", 36, 1182, 13, Color.rgb(37, 99, 235), true, Paint.Align.LEFT);
+        multiline(canvas, "본 리포트는 공개 API 기준 진단이며, 1위 진입이나 조회수 상승을 보장하지 않습니다. 다음 방송에서 무엇을 고칠지 확인하는 참고 자료입니다.", 36, 1206, 348, 11, Color.rgb(51, 65, 85), 3);
     }
 
     private void drawOwnScoreCard(Canvas canvas, float x, float y, float w) {
@@ -253,10 +253,12 @@ public final class ComparisonDashboardView extends View {
     }
 
     private String displayName(String label) {
-        if (label.startsWith("트래픽")) return "트래픽 질량 (60점 묶음)";
-        if (label.startsWith("채널")) return "채널 영향 (30점 묶음)";
-        if (label.startsWith("기본")) return "기본 최적화 (10점 묶음)";
-        return label == null || label.trim().length() == 0 ? "확인 필요" : label.trim();
+        String clean = label == null ? "" : label.trim();
+        clean = clean.replace("(트래픽 60)", "").replace("(채널 30)", "").replace("(기본 10)", "").trim();
+        if (clean.startsWith("트래픽:")) return clean.substring(4).trim();
+        if (clean.startsWith("채널:")) return clean.substring(3).trim();
+        if (clean.startsWith("기본:")) return clean.substring(3).trim();
+        return clean.length() == 0 ? "확인 필요" : clean;
     }
 
     private String diagnosisTitle(Row row) {
@@ -280,7 +282,7 @@ public final class ComparisonDashboardView extends View {
         if (label.startsWith("기본")) {
             return "기본 최적화가 " + competitor + "보다 " + gap + "점 낮음. 제목·설명 첫 부분에 [" + blank(data.keyword, "검색 키워드") + "]를 분명히 넣으세요.";
         }
-        return "이전 형식 항목은 3대 카테고리 점수에 섞지 않고 새 분석에서 다시 확인합니다.";
+        return "이전 형식 항목은 새 세부 항목 점수에 섞지 않고 새 분석에서 다시 확인합니다.";
     }
 
     private String blank(String value, String fallback) {
@@ -384,12 +386,8 @@ public final class ComparisonDashboardView extends View {
 
         List<Row> orderedRows() {
             ArrayList<Row> ordered = new ArrayList<>();
-            String[] order = { "traffic", "channel", "basic" };
-            for (String key : order) {
-                addFirst(ordered, key);
-            }
             for (Row row : rows) {
-                if (!ordered.contains(row) && isScoreCategory(row.name)) ordered.add(row);
+                if (isScoreCategory(row.name)) ordered.add(row);
             }
             return ordered;
         }
@@ -403,22 +401,6 @@ public final class ComparisonDashboardView extends View {
                 }
             }
             return result;
-        }
-
-        private void addFirst(ArrayList<Row> ordered, String key) {
-            for (Row row : rows) {
-                if (!ordered.contains(row) && matches(row.name, key)) {
-                    ordered.add(row);
-                    return;
-                }
-            }
-        }
-
-        private boolean matches(String label, String key) {
-            if ("traffic".equals(key)) return label.startsWith("트래픽");
-            if ("channel".equals(key)) return label.startsWith("채널");
-            if ("basic".equals(key)) return label.startsWith("기본");
-            return false;
         }
 
         private boolean isScoreCategory(String label) {

@@ -8,7 +8,7 @@ JAVA_HOME="${JAVA_HOME:-/opt/homebrew/opt/openjdk}"
 BUILD_TOOLS="$SDK_ROOT/build-tools/35.0.0"
 ANDROID_JAR="$SDK_ROOT/platforms/android-35/android.jar"
 OUT_DIR="$ROOT_DIR/build"
-APK_NAME="LiveHelper_AndroidLiveRank_Work4_Report_2026-05-19.apk"
+APK_NAME="LiveHelper_AndroidLiveRank_Work6_ChannelAnalysis.apk"
 KEYSTORE="$ROOT_DIR/livehelper-android-live-rank-debug.keystore"
 
 export JAVA_HOME

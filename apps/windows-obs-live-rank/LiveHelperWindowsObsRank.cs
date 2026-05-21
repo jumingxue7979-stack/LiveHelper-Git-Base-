@@ -373,6 +373,7 @@ namespace LiveHelperWindowsObsRank
         private void CheckOnce()
         {
             if (isChecking) return;
+            refreshTimer.Stop();
             isChecking = true;
             SetStatus("YouTube 순위를 확인하는 중입니다.", false);
 
@@ -526,18 +527,30 @@ namespace LiveHelperWindowsObsRank
             }
 
             comparisonDone = true;
-            ComparisonReport report = client.FetchComparisonReport(
-                channelBox.Text.Trim(),
-                keywordBox.Text.Trim(),
-                lockedVideoId
-            );
-            latestComparisonReport = report.ToDisplayText();
-            SaveLatestComparisonReport();
-            BeginInvoke(new Action(() =>
+            try
             {
-                ShowPopup("비교 분석 준비", report.Summary, "최근 비교 분석 보기에서 확인하세요.");
-                FinishMonitoringAfterComparison("비교 분석 준비 완료");
-            }));
+                ComparisonReport report = client.FetchComparisonReport(
+                    channelBox.Text.Trim(),
+                    keywordBox.Text.Trim(),
+                    lockedVideoId
+                );
+                latestComparisonReport = report.ToDisplayText();
+                SaveLatestComparisonReport();
+                BeginInvoke(new Action(() =>
+                {
+                    ShowPopup("비교 분석 준비", report.Summary, "최근 비교 분석 보기에서 확인하세요.");
+                    FinishMonitoringAfterComparison("비교 분석 준비 완료");
+                }));
+            }
+            catch (Exception ex)
+            {
+                comparisonDone = false;
+                BeginInvoke(new Action(() =>
+                {
+                    SetStatus("비교 분석 실패: " + ShortText(ex.Message), true);
+                    if (monitoringActive) refreshTimer.Start();
+                }));
+            }
         }
 
         private void ShowPopup(string title, string rank, string sub)
@@ -983,7 +996,7 @@ namespace LiveHelperWindowsObsRank
 
         private void DrawCategoryComparison(Graphics g)
         {
-            DrawString(g, "3대 카테고리 점수 비교", sectionFont, ink, new RectangleF(32, 286, 360, 26));
+            DrawString(g, "세부 항목 점수 비교", sectionFont, ink, new RectangleF(32, 286, 360, 26));
             DrawString(g, "총점 100점 = 트래픽 60 + 채널 30 + 기본 10", smallFont, muted, new RectangleF(372, 290, 360, 18), Far());
             Rectangle card = new Rectangle(32, 318, 700, 410);
             DrawCard(g, card, Color.White);
@@ -994,7 +1007,7 @@ namespace LiveHelperWindowsObsRank
                 CategoryVisual row = data.Categories[i];
                 Rectangle rowRect = new Rectangle(card.X + 14, y, card.Width - 28, 52);
                 if (i > 0) g.DrawLine(new Pen(border), rowRect.X, rowRect.Y - 8, rowRect.Right, rowRect.Y - 8);
-                DrawString(g, (i + 1) + ". " + row.Name, bodyBoldFont, ink, new RectangleF(rowRect.X, rowRect.Y, 180, 20));
+                DrawString(g, (i + 1) + ". " + CategoryDisplayName(row.Name), bodyBoldFont, ink, new RectangleF(rowRect.X, rowRect.Y, 180, 20));
                 DrawString(g, "내 채널", smallFont, muted, new RectangleF(rowRect.X + 190, rowRect.Y, 60, 16));
                 DrawBar(g, new Rectangle(rowRect.X + 250, rowRect.Y + 3, 230, 9), row.OwnScore, ownColor);
                 DrawString(g, row.OwnScore + "점", bodyBoldFont, ink, new RectangleF(rowRect.X + 492, rowRect.Y - 2, 45, 18), Far());
@@ -1265,11 +1278,25 @@ namespace LiveHelperWindowsObsRank
             return new StringFormat { Alignment = StringAlignment.Far, LineAlignment = StringAlignment.Near, Trimming = StringTrimming.EllipsisCharacter };
         }
 
+        private string CategoryDisplayName(string label)
+        {
+            string clean = string.IsNullOrWhiteSpace(label) ? "" : label.Trim();
+            clean = clean.Replace("(트래픽 60)", "").Replace("(채널 30)", "").Replace("(기본 10)", "").Trim();
+            if (clean.StartsWith("트래픽:")) return clean.Substring(4).Trim();
+            if (clean.StartsWith("채널:")) return clean.Substring(3).Trim();
+            if (clean.StartsWith("기본:")) return clean.Substring(3).Trim();
+            return clean.Length == 0 ? "확인 필요" : clean;
+        }
+
         private string ShortLabel(string label)
         {
-            if (label.Contains("트래픽")) return "트래픽";
-            if (label.Contains("채널")) return "채널";
-            if (label.Contains("기본")) return "최적화";
+            if (label.Contains("현재 시청자")) return "시청자";
+            if (label.Contains("순위")) return "순위";
+            if (label.Contains("효율")) return "효율";
+            if (label.Contains("구독자")) return "구독자";
+            if (label.Contains("누적")) return "누적";
+            if (label.Contains("정보")) return "정보";
+            if (label.Contains("기본") || label.Contains("제목")) return "최적화";
             return "반응";
         }
 

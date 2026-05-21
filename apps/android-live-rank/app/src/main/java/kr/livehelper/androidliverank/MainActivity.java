@@ -468,7 +468,7 @@ public final class MainActivity extends Activity implements SharedPreferences.On
         } else if (!isSupportedComparisonReport(report)) {
             prefs.edit().remove("lastComparisonReport").apply();
             comparisonDashboardView.setVisibility(View.GONE);
-            comparisonReportText.setText("이전 형식의 비교 분석은 새 화면에 표시하지 않습니다.\n방송을 다시 분석하면 3대 카테고리 구조로 새 리포트가 생성됩니다.");
+            comparisonReportText.setText("이전 형식의 비교 분석은 새 화면에 표시하지 않습니다.\n방송을 다시 분석하면 Work6 세부 항목 구조로 새 리포트가 생성됩니다.");
             comparisonReportText.setVisibility(View.VISIBLE);
         } else {
             comparisonReportText.setVisibility(View.GONE);
@@ -508,7 +508,8 @@ public final class MainActivity extends Activity implements SharedPreferences.On
         builder.append("1. 트래픽 질량 (60점 묶음): 현재 시청자, 노필터 순위 접근도, 구독자 대비 현재 시청자 효율\n");
         builder.append("2. 채널 영향 (30점 묶음): 구독자 규모, 채널 누적 조회/영상 기반, 채널 정보 확인성\n");
         builder.append("3. 기본 최적화 (10점 묶음): 제목, 설명, 썸네일 기본 신호\n");
-        builder.append("4. 반응 품질: 채팅 참여율과 좋아요 반응은 점수와 분리해 참고\n\n");
+        builder.append("4. 세부 점수표: 위 3대 묶음을 7개 하위 항목으로 펼쳐 표시\n");
+        builder.append("5. 반응 품질: 채팅 참여율과 좋아요 반응은 점수와 분리해 참고\n\n");
 
         builder.append("왜 이게 필요한가\n");
         builder.append("- 사용자는 점수만으로 행동할 수 없습니다. 이 화면은 어떤 항목이 1위보다 약한지 보고 바로 수정하기 위한 화면입니다.\n");
