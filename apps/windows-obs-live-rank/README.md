@@ -37,7 +37,7 @@ OBS 방송 시작 버튼 클릭
 
 ## Windows에서 빌드
 
-Windows PC에서 반드시 `codex/work6-channel-analysis` 브랜치를 받은 뒤 이 폴더를 열고 아래 파일을 더블클릭한다.
+Windows PC에서는 반드시 `codex/work6-channel-analysis` 브랜치를 최신 원격 커밋까지 받은 뒤 빌드한다.
 
 ```text
 git fetch origin
@@ -45,16 +45,33 @@ git switch codex/work6-channel-analysis
 git pull --ff-only origin codex/work6-channel-analysis
 ```
 
-빌드 스크립트는 다른 브랜치나 Work6 표식이 없는 소스에서는 중단된다.
+그다음 이 폴더를 열고 아래 파일을 더블클릭한다.
 
 ```text
 BUILD_ON_WINDOWS.cmd
 ```
 
+빌드 스크립트는 다음 상태가 아니면 EXE 생성을 중단한다.
+
+```text
+현재 브랜치: codex/work6-channel-analysis
+현재 커밋: origin/codex/work6-channel-analysis 와 동일
+Windows 소스: 로컬 미커밋 변경 없음
+Work6 최신 표식: 순위 videoId 고정, 7개 세부 항목, 타이머 안정화 포함
+```
+
+Git 없이 받은 단독 소스 묶음에서는 브랜치 확인 대신 Work6 최신 표식만 검사한다.
+
 성공하면 아래 파일이 생긴다.
 
 ```text
 dist\LiveHelperWindowsObsRank.exe
+```
+
+해시는 Windows PowerShell에서 아래 명령으로 확인한다.
+
+```text
+Get-FileHash .\dist\LiveHelperWindowsObsRank.exe -Algorithm SHA256
 ```
 
 ## Windows 테스트 순서
