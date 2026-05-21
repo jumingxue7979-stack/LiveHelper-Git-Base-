@@ -37,7 +37,15 @@ OBS 방송 시작 버튼 클릭
 
 ## Windows에서 빌드
 
-Windows PC에서 이 폴더를 열고 아래 파일을 더블클릭한다.
+Windows PC에서 반드시 `codex/work6-channel-analysis` 브랜치를 받은 뒤 이 폴더를 열고 아래 파일을 더블클릭한다.
+
+```text
+git fetch origin
+git switch codex/work6-channel-analysis
+git pull --ff-only origin codex/work6-channel-analysis
+```
+
+빌드 스크립트는 다른 브랜치나 Work6 표식이 없는 소스에서는 중단된다.
 
 ```text
 BUILD_ON_WINDOWS.cmd

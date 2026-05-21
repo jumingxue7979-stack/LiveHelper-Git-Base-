@@ -46,6 +46,7 @@ public final class MainActivity extends Activity implements SharedPreferences.On
     private String pendingPermissionStorePackageName;
     private String pendingPermissionAppName;
     private boolean waitingForOverlayPermission;
+    private Runnable hideStatusRunnable;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -252,6 +253,7 @@ public final class MainActivity extends Activity implements SharedPreferences.On
 
     @Override
     protected void onDestroy() {
+        cancelStatusHide();
         getSharedPreferences(PREFS, MODE_PRIVATE).unregisterOnSharedPreferenceChangeListener(this);
         super.onDestroy();
     }
@@ -598,9 +600,25 @@ public final class MainActivity extends Activity implements SharedPreferences.On
     }
 
     private void showStatus(String message, int color) {
+        cancelStatusHide();
         statusText.setText(message);
         statusText.setTextColor(color);
         statusText.setVisibility(View.VISIBLE);
+        hideStatusRunnable = new Runnable() {
+            @Override
+            public void run() {
+                statusText.setVisibility(View.GONE);
+                hideStatusRunnable = null;
+            }
+        };
+        statusText.postDelayed(hideStatusRunnable, 4000L);
+    }
+
+    private void cancelStatusHide() {
+        if (statusText != null && hideStatusRunnable != null) {
+            statusText.removeCallbacks(hideStatusRunnable);
+            hideStatusRunnable = null;
+        }
     }
 
     private void setLiveRankRunning(boolean running) {

@@ -484,7 +484,23 @@ namespace LiveHelperWindowsObsRank
 
             if (!isVisible)
             {
-                return false;
+                if (lockedVideoId.Length == 0)
+                {
+                    return false;
+                }
+
+                BeginInvoke(new Action(() =>
+                {
+                    ShowPopup(
+                        result.Keyword,
+                        "1. 노필터 " + RankText(result.NoFilterRank) + "\n2. 라이브 " + RankText(result.LiveRank),
+                        RankPopupSub(result)
+                    );
+                    SetStatus("노필터 " + RankText(result.NoFilterRank) + " · 라이브 " + RankText(result.LiveRank), false);
+                    refreshTimer.Start();
+                }));
+                TryGenerateComparisonReport();
+                return true;
             }
 
             BeginInvoke(new Action(() =>
@@ -492,30 +508,36 @@ namespace LiveHelperWindowsObsRank
                 ShowPopup(
                     result.Keyword,
                     "1. 노필터 " + RankText(result.NoFilterRank) + "\n2. 라이브 " + RankText(result.LiveRank),
-                    result.TopLiveChannelTitle.Length > 0 ? "라이브 1위 " + result.TopLiveChannelTitle : "5분마다 갱신"
+                    RankPopupSub(result)
                 );
                 SetStatus("노필터 " + RankText(result.NoFilterRank) + " · 라이브 " + RankText(result.LiveRank), false);
                 refreshTimer.Start();
             }));
 
-            if (!comparisonDone && (DateTime.UtcNow - monitoringStartedAtUtc).TotalMilliseconds >= ComparisonDelayMs)
+            TryGenerateComparisonReport();
+            return true;
+        }
+
+        private void TryGenerateComparisonReport()
+        {
+            if (comparisonDone || (DateTime.UtcNow - monitoringStartedAtUtc).TotalMilliseconds < ComparisonDelayMs)
             {
-                comparisonDone = true;
-                ComparisonReport report = client.FetchComparisonReport(
-                    channelBox.Text.Trim(),
-                    keywordBox.Text.Trim(),
-                    lockedVideoId
-                );
-                latestComparisonReport = report.ToDisplayText();
-                SaveLatestComparisonReport();
-                BeginInvoke(new Action(() =>
-                {
-                    ShowPopup("비교 분석 준비", report.Summary, "최근 비교 분석 보기에서 확인하세요.");
-                    SetStatus("비교 분석 준비 완료", false);
-                }));
+                return;
             }
 
-            return true;
+            comparisonDone = true;
+            ComparisonReport report = client.FetchComparisonReport(
+                channelBox.Text.Trim(),
+                keywordBox.Text.Trim(),
+                lockedVideoId
+            );
+            latestComparisonReport = report.ToDisplayText();
+            SaveLatestComparisonReport();
+            BeginInvoke(new Action(() =>
+            {
+                ShowPopup("비교 분석 준비", report.Summary, "최근 비교 분석 보기에서 확인하세요.");
+                FinishMonitoringAfterComparison("비교 분석 준비 완료");
+            }));
         }
 
         private void ShowPopup(string title, string rank, string sub)
@@ -569,6 +591,27 @@ namespace LiveHelperWindowsObsRank
             SetStatus(message, false);
             WindowState = FormWindowState.Normal;
             Activate();
+        }
+
+        private void FinishMonitoringAfterComparison(string message)
+        {
+            StopTimersOnly();
+            if (lockedVideoId.Length > 0)
+            {
+                lastKnownVideoId = lockedVideoId;
+            }
+            lockedVideoId = "";
+            preLiveMisses = 0;
+            consecutiveErrors = 0;
+            isChecking = false;
+            if (monitoringActive)
+            {
+                lastSessionEndedAtUtc = DateTime.UtcNow;
+            }
+            monitoringActive = false;
+            SaveLastSession();
+            UpdateLiveStatusBar();
+            SetStatus(message, false);
         }
 
         private void StopTimersOnly()
@@ -668,6 +711,13 @@ namespace LiveHelperWindowsObsRank
         private string RankText(int rank)
         {
             return rank > 0 ? rank + "위" : "20위 밖";
+        }
+
+        private string RankPopupSub(RankResult result)
+        {
+            if (result.TopLiveChannelTitle.Length > 0) return "라이브 1위 " + result.TopLiveChannelTitle;
+            if (result.TopNoFilterChannelTitle.Length > 0) return "노필터 1위 " + result.TopNoFilterChannelTitle;
+            return "5분마다 갱신";
         }
 
         private string ShortText(string text)
@@ -781,8 +831,8 @@ namespace LiveHelperWindowsObsRank
                     BeginInvoke(new Action(() =>
                     {
                         comparisonDone = true;
-                        SetStatus("비교 분석 준비 완료", false);
                         ShowPopup("비교 분석 준비", report.Summary, "최근 비교 분석 보기에서 확인하세요.");
+                        FinishMonitoringAfterComparison("비교 분석 준비 완료");
                         new ComparisonReportForm(latestComparisonReport).Show(this);
                     }));
                 }
