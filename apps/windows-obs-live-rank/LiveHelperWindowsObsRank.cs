@@ -308,6 +308,7 @@ namespace LiveHelperWindowsObsRank
 
             if (!isVisible)
             {
+                BeginInvoke(new Action(() => refreshTimer.Start()));
                 return false;
             }
 

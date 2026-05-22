@@ -370,16 +370,16 @@ namespace LiveHelperWindowsObsRank
 
             if (fallbackItem != null)
             {
-                ApplyMatchedSearchResult(result, fallbackItem, liveOnly, fallbackRank);
+                ApplyMatchedSearchResult(result, fallbackItem, liveOnly, fallbackRank, result.TargetVideoId.Length == 0);
             }
         }
 
-        private void ApplyMatchedSearchResult(RankResult result, Dictionary<string, object> item, bool liveOnly, int rank)
+        private void ApplyMatchedSearchResult(RankResult result, Dictionary<string, object> item, bool liveOnly, int rank, bool updateVideoId = true)
         {
             Dictionary<string, object> snippet = Dict(item, "snippet");
             if (liveOnly) result.LiveRank = rank;
             else result.NoFilterRank = rank;
-            result.TargetVideoId = VideoId(item);
+            if (updateVideoId) result.TargetVideoId = VideoId(item);
             result.TargetTitle = Str(snippet, "title");
             result.ChannelTitle = Str(snippet, "channelTitle");
         }
